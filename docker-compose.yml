@@ -1,0 +1,48 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: sdr
+      POSTGRES_PASSWORD: sdr
+      POSTGRES_DB: sdr
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sdr -d sdr"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://sdr:sdr@db:5432/sdr
+      EMBEDDING_CACHE_DIR: /models
+      CORS_ORIGINS: '["http://localhost:${WEB_PORT:-3001}"]'
+    ports:
+      - "${API_PORT:-8001}:8000"
+    volumes:
+      - models:/models
+      - ./data:/data:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-8001}
+    environment:
+      INTERNAL_API_URL: http://api:8000
+    ports:
+      - "${WEB_PORT:-3001}:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  models:

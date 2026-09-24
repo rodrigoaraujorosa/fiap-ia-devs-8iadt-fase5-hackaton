@@ -1,0 +1,28 @@
+# Env / segredos
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Modelos de embedding baixados
+.models/
+local_cache/
+
+# SO / IDE
+.DS_Store
+Thumbs.db
+.idea/

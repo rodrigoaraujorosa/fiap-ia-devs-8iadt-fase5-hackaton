@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Mariana Costa",
+    "email": "mariana.costa@imobdemo.com.br",
+    "phone": "+55 11 90000-0001",
+    "role": "corretor",
+    "zones": ["zona sul"],
+    "bio": "Corretora há 8 anos, especialista em apartamentos na zona sul (Moema, Vila Mariana, Brooklin)."
+  },
+  {
+    "name": "Rafael Almeida",
+    "email": "rafael.almeida@imobdemo.com.br",
+    "phone": "+55 11 90000-0002",
+    "role": "corretor",
+    "zones": ["zona oeste", "centro"],
+    "bio": "Atende Pinheiros, Vila Madalena, Perdizes e região central; foco em compra e locação."
+  },
+  {
+    "name": "Juliana Pereira",
+    "email": "juliana.pereira@imobdemo.com.br",
+    "phone": "+55 11 90000-0003",
+    "role": "corretor",
+    "zones": ["zona norte", "zona leste"],
+    "bio": "Especialista em primeiro imóvel e financiamento nas zonas norte e leste."
+  },
+  {
+    "name": "Carlos Menezes",
+    "email": "carlos.menezes@imobdemo.com.br",
+    "phone": "+55 11 90000-0004",
+    "role": "especialista_investimento",
+    "zones": ["zona sul", "zona oeste", "zona norte", "zona leste", "centro"],
+    "bio": "Consultor de investimentos imobiliários: renda com aluguel, studios, salas comerciais e análise de rentabilidade."
+  }
+]
