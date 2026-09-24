@@ -5,9 +5,13 @@ description = "API do Agente SDR Imobiliário (FastAPI + LangGraph)"
 requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.20.0",
+    "anthropic>=1.8.0",
     "fastapi>=0.141.1",
     "fastembed>=0.8.1",
+    "langgraph>=1.2.12",
+    "langgraph-checkpoint-postgres>=3.1.2",
     "pgvector>=0.5.0",
+    "psycopg-pool>=3.3.3",
     "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.15.0",
     "sqlalchemy>=2.0",

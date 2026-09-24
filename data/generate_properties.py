@@ -91,7 +91,7 @@ def round_to(value: float, step: int) -> int:
 def build_property(idx: int, bairro: str, tipo: str, finalidade: str) -> dict:
     zona, m2_price, perfil, metro = NEIGHBORHOODS[bairro]
     (a_min, a_max), quartos_opts, fator = TYPES[tipo]
-    area = random.randint(a_min, a_max)
+    area = int(random.triangular(a_min, a_max, a_min + (a_max - a_min) * 0.2))  # mais imóveis compactos
     quartos = random.choice(quartos_opts)
     if tipo == "apartamento":  # área coerente com a quantidade de quartos
         area = max(area, 30 + quartos * 22)
@@ -162,13 +162,13 @@ def main() -> None:
     properties = []
     idx = 1
     bairros = list(NEIGHBORHOODS)
-    # 3 imóveis por bairro (60 no total), mistura de venda e aluguel
+    # 5 imóveis por bairro (100 no total): 3 à venda e 2 para aluguel
     for bairro in bairros:
-        for i in range(3):
+        for i in range(5):
             tipo = random.choices(list(type_weights), weights=list(type_weights.values()))[0]
             if NEIGHBORHOODS[bairro][1] < 9000 and tipo == "cobertura":
                 tipo = "apartamento"
-            finalidade = "venda" if i < 2 else "aluguel"
+            finalidade = "venda" if i < 3 else "aluguel"
             properties.append(build_property(idx, bairro, tipo, finalidade))
             idx += 1
 

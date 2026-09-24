@@ -29,12 +29,36 @@ POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)**: um agente SDR que
 | 📈 Observabilidade | Langfuse |
 | ☁️ Infra | Docker Compose · AWS |
 
+## 🤖 Como o agente funciona
+
+```mermaid
+flowchart LR
+    U([Mensagem do lead]) --> S[Supervisor<br/>Claude Haiku 4.5]
+    S -->|extrai perfil, score e funil| CRM[(Postgres<br/>CRM + memória)]
+    S -->|compra / aluguel| A1[Especialista Compra e Aluguel<br/>Claude Sonnet 5]
+    S -->|investimento| A2[Especialista Investimentos<br/>Claude Sonnet 5]
+    A1 & A2 -->|tool use| T[buscar_imoveis · detalhes_imovel<br/>RAG híbrido]
+    A1 & A2 -->|streaming SSE| R([Resposta])
+```
+
+- **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada (intenção, orçamento, região, quartos, urgência, perfil investidor...). Regras determinísticas calculam campos faltantes, score (0-100), temperatura e etapa do funil, e escolhem o especialista.
+- **Especialistas (Sonnet):** persona humanizada ("Lia"), uma pergunta por vez, guiada pela lista de campos faltantes; buscam imóveis via tool use e respondem em streaming.
+- **Memória:** o histórico completo (inclusive chamadas de ferramentas) é o estado do grafo LangGraph, persistido no Postgres pelo checkpointer — a conversa continua mesmo após reiniciar a API.
+
+### 💬 API de chat
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/chat/sessions` | Inicia uma conversa (cria o lead) |
+| `POST` | `/chat/{lead_id}/messages` | Envia mensagem; resposta via **SSE** (`analysis`, `agent`, `token`, `tool`, `properties`, `done`) |
+| `GET` | `/chat/{lead_id}/messages` | Histórico da conversa |
+
 ## 📁 Estrutura
 
 ```
 api/    FastAPI + agentes (app/), migrations (alembic/), seed (scripts/), testes (tests/)
 web/    Next.js — chat do lead e dashboard do corretor
-data/   base simulada: 60 imóveis em SP (gerador determinístico) e corretores
+data/   base simulada: 100 imóveis em SP (gerador determinístico) e corretores
 docs/   arquitetura, explicação da IA e pitch
 ```
 
@@ -68,13 +92,14 @@ cd ../web && npm install && npm run dev
 
 ```bash
 cd api && uv run pytest     # requer o db rodando e o seed aplicado
+RUN_LLM_TESTS=1 uv run pytest tests/test_agent_scenarios.py   # cenários do enunciado com o Claude (custa tokens)
 uv run ruff check .
 ```
 
 ## 🗺️ Roadmap
 
 - [x] **Dia 1** — Fundação: Docker Compose, schema (leads, mensagens, imóveis, corretores, agenda), base simulada, RAG híbrido, esqueleto web
-- [ ] **Dia 2** — Grafo multiagente (supervisor, compra/aluguel, investidor), extrator de perfil, memória, `/chat` com streaming
+- [x] **Dia 2** — Grafo multiagente (supervisor, compra/aluguel, investidor), extrator de perfil, memória, `/chat` com streaming
 - [ ] **Dia 3** — Agendamento, resumo para corretor, follow-up automático, Langfuse
 - [ ] **Dia 4** — Chat do lead e dashboard do corretor
 - [ ] **Dia 5** — Diferenciais: deploy AWS, segurança, WhatsApp, Voice AI, CRM

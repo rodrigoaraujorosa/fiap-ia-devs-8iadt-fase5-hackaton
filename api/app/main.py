@@ -1,12 +1,25 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, properties
+from app.agents import runtime
+from app.api.routes import chat, health, properties
 from app.core.config import get_settings
 
 settings = get_settings()
+logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title=settings.app_name, version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    runtime.start()  # grafo + checkpointer Postgres
+    yield
+    runtime.stop()
+
+
+app = FastAPI(title=settings.app_name, version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,3 +31,4 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(properties.router)
+app.include_router(chat.router)
