@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.agents import runtime
-from app.api.routes import chat, health, leads, properties
+from app.api.routes import admin, chat, health, leads, properties
 from app.core import observability
 from app.core.config import get_settings
 from app.jobs import scheduler
@@ -24,7 +24,7 @@ async def lifespan(_: FastAPI):
     observability.flush()
 
 
-app = FastAPI(title=settings.app_name, version="0.3.0", lifespan=lifespan)
+app = FastAPI(title=settings.app_name, version="0.4.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,3 +38,4 @@ app.include_router(health.router)
 app.include_router(properties.router)
 app.include_router(chat.router)
 app.include_router(leads.router)
+app.include_router(admin.router)

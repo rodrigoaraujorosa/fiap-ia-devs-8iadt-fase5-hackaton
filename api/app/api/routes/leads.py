@@ -1,13 +1,13 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.agents.qualification import missing_fields
 from app.db.session import get_db
-from app.jobs.followup import run_followups
 from app.models import Appointment, Lead, Message, Slot, Summary
 from app.schemas.crm import AppointmentOut, LeadDetail, SummaryOut
 from app.schemas.lead import LeadOut
@@ -57,6 +57,7 @@ def get_lead(lead_id: uuid.UUID, db: Session = Depends(get_db)):
             "summary": summary,
             "appointments": [appointment_out(a, lead.name) for a in appts],
             "messages": messages,
+            "missing": missing_fields(lead),
         }
     )
 
@@ -80,7 +81,34 @@ def list_appointments(upcoming: bool = True, db: Session = Depends(get_db)):
     return [appointment_out(appt, name) for appt, name in db.execute(stmt.order_by(Slot.start_at)).all()]
 
 
-@router.post("/followups/run")
-def trigger_followups():
-    """Dispara o ciclo de follow-up agora (o job também roda sozinho periodicamente)."""
-    return {"enviados": run_followups()}
+@router.get("/dashboard/metrics")
+def dashboard_metrics(db: Session = Depends(get_db)):
+    """KPIs do dashboard: funil, temperatura, intenção, agendamentos e follow-ups."""
+    active = Lead.last_message_at.is_not(None)
+
+    def count_by(column) -> dict[str, int]:
+        return dict(db.execute(select(column, func.count()).where(active).group_by(column)).all())
+
+    by_status = count_by(Lead.status)
+    total = sum(by_status.values())
+    advanced = sum(by_status.get(s, 0) for s in ("qualificado", "agendado", "encaminhado"))
+    since = datetime.now(UTC) - timedelta(hours=24)
+    return {
+        "total_leads": total,
+        "leads_24h": db.scalar(select(func.count()).select_from(Lead).where(active, Lead.created_at >= since)),
+        "by_status": by_status,
+        "by_temperature": count_by(Lead.temperature),
+        "by_intent": count_by(Lead.intent),
+        "avg_score": round(db.scalar(select(func.avg(Lead.score)).where(active)) or 0),
+        "qualification_rate": round(advanced / total, 3) if total else 0,
+        "upcoming_appointments": db.scalar(
+            select(func.count())
+            .select_from(Appointment)
+            .join(Slot)
+            .where(Slot.start_at >= datetime.now(UTC), Appointment.status.in_(("agendado", "confirmado")))
+        ),
+        "followups_sent": db.scalar(select(func.count()).select_from(Message).where(Message.role == "followup")),
+        "awaiting_followup": db.scalar(
+            select(func.count()).select_from(Lead).where(Lead.next_followup_at.is_not(None))
+        ),
+    }

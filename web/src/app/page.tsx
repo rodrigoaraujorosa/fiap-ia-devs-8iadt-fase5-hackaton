@@ -1,63 +1,64 @@
+import { BellRing, CalendarCheck, FileText, MessagesSquare, SearchCheck, Target } from "lucide-react";
 import Link from "next/link";
 
-import { apiGet, brl, type Property } from "@/lib/api";
+import { LogoMark } from "@/components/Brand";
+import { apiGet } from "@/lib/api";
 
-async function loadStatus() {
+async function apiOnline() {
   try {
-    const [health, properties] = await Promise.all([
-      apiGet<{ status: string }>("/health"),
-      apiGet<Property[]>("/properties?limit=6"),
-    ]);
-    return { online: health.status === "ok", properties };
+    return (await apiGet<{ status: string }>("/health")).status === "ok";
   } catch {
-    return { online: false, properties: [] as Property[] };
+    return false;
   }
 }
 
+const FEATURES = [
+  { icon: MessagesSquare, title: "Atendimento na hora", text: "Conversa humanizada, 24/7, uma pergunta por vez." },
+  { icon: Target, title: "Qualificação", text: "Identifica compra, aluguel ou investimento e calcula um score." },
+  { icon: SearchCheck, title: "Imóveis certos", text: "Busca híbrida (semântica + texto) na base da imobiliária." },
+  { icon: CalendarCheck, title: "Agendamento", text: "Marca visitas e reuniões na agenda do corretor da região." },
+  { icon: FileText, title: "Resumo para o corretor", text: "Briefing com perfil, objeções e próximos passos." },
+  { icon: BellRing, title: "Follow-up automático", text: "Retoma leads que sumiram, com o contexto da conversa." },
+];
+
 export default async function Home() {
-  const { online, properties } = await loadStatus();
+  const online = await apiOnline();
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-3">
-        <h1 className="text-3xl font-bold">Agente SDR Imobiliário com IA</h1>
-        <p className="max-w-2xl opacity-80">
-          Atende leads 24/7, qualifica intenção de compra, aluguel ou investimento, sugere imóveis, agenda visitas e
-          entrega um resumo pronto para o corretor.
+    <div className="space-y-10 py-4">
+      <section className="max-w-3xl space-y-4">
+        <LogoMark size={56} />
+        <p className="text-sm font-medium text-brand">Hackathon FIAP · Pós Tech IA para Devs</p>
+        <h1 className="text-4xl font-semibold leading-tight text-ink">
+          Nenhum lead sem resposta. Todo corretor com o cliente certo.
+        </h1>
+        <p className="text-lg text-ink-2">
+          A Laris é uma SDR com IA generativa: atende leads imobiliários na hora, qualifica, mostra imóveis, agenda
+          visitas e entrega um resumo pronto para o corretor.
         </p>
-        <div className="flex gap-3">
-          <Link href="/chat" className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white">
-            Conversar com a Lia
+        <div className="flex flex-wrap gap-3">
+          <Link href="/chat" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
+            Conversar como lead
           </Link>
-          <Link href="/dashboard" className="rounded-md border border-current/20 px-4 py-2 text-sm font-medium">
-            Abrir dashboard
+          <Link href="/dashboard" className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink">
+            Abrir dashboard do corretor
           </Link>
         </div>
-        <p className="text-sm">
-          API:{" "}
-          <span className={online ? "text-emerald-600" : "text-red-600"}>{online ? "online" : "offline"}</span>
+        <p className="inline-flex items-center gap-2 text-xs text-ink-2">
+          <span className={`size-2 rounded-full ${online ? "bg-good" : "bg-danger"}`} aria-hidden />
+          API {online ? "online" : "offline"}
         </p>
       </section>
 
-      {properties.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Amostra da base de imóveis</h2>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {properties.map((p) => (
-              <li key={p.id} className="rounded-lg border border-current/10 p-4">
-                <p className="text-xs uppercase opacity-60">
-                  {p.id} · {p.purpose} · {p.zone}
-                </p>
-                <p className="font-medium">{p.title}</p>
-                <p className="text-sm opacity-80">
-                  {brl(p.price)}
-                  {p.purpose === "aluguel" ? "/mês" : ""} · {p.area_m2} m² · {p.bedrooms} qto(s)
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {FEATURES.map(({ icon: Icon, title, text }) => (
+          <article key={title} className="rounded-xl border border-line bg-surface p-4">
+            <Icon aria-hidden size={18} className="text-brand" />
+            <h2 className="mt-2 text-sm font-semibold text-ink">{title}</h2>
+            <p className="mt-1 text-sm text-ink-2">{text}</p>
+          </article>
+        ))}
+      </section>
     </div>
   );
 }

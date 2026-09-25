@@ -1,26 +1,114 @@
 @import "tailwindcss";
 
+/* Tokens de interface. Os de dados (--data-*) seguem a paleta validada (skill dataviz). */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  color-scheme: light;
+  --page: #f6f6f3;
+  --surface: #ffffff;
+  --surface-2: #f1f0ec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --line: #e4e3dc;
+  --brand: #0f766e;
+  --brand-ink: #ffffff;
+  --brand-soft: #e3f3f1;
+  --bubble-user: #d9f4e7;
+  --bubble-agent: #ffffff;
+  --chat-bg: #efeae2;
+  --data-1: #2a78d6;
+  --data-track: #e8eef8;
+  --hot: #d9482b;
+  --warm: #b87400;
+  --cold: #2a78d6;
+  --good: #0a7d0a;
+  --danger: #d03b3b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #242422;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --line: #2c2c2a;
+    --brand: #2bb3a3;
+    --brand-ink: #062522;
+    --brand-soft: #12302d;
+    --bubble-user: #0f4a3a;
+    --bubble-agent: #242422;
+    --chat-bg: #111b18;
+    --data-1: #3987e5;
+    --data-track: #1d2633;
+    --hot: #f07a5c;
+    --warm: #f0b44a;
+    --cold: #6da7ec;
+    --good: #3fc23f;
+    --danger: #e66767;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-bubble-user: var(--bubble-user);
+  --color-bubble-agent: var(--bubble-agent);
+  --color-chat: var(--chat-bg);
+  --color-data: var(--data-1);
+  --color-data-track: var(--data-track);
+  --color-hot: var(--hot);
+  --color-warm: var(--warm);
+  --color-cold: var(--cold);
+  --color-good: var(--good);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Markdown das mensagens da Laris */
+.md p + p,
+.md p + ul,
+.md ul + p {
+  margin-top: 0.5rem;
+}
+.md ul {
+  list-style: disc;
+  padding-left: 1.1rem;
+}
+.md li + li {
+  margin-top: 0.2rem;
+}
+.md strong {
+  font-weight: 600;
+}
+
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+.typing span {
+  animation: blink 1.2s infinite both;
+}
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }

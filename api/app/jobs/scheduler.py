@@ -22,7 +22,7 @@ def _refresh_slots() -> None:
 def start() -> None:
     global _scheduler
     settings = get_settings()
-    if _scheduler is not None or not settings.followup_enabled:
+    if _scheduler is not None:
         return
     _scheduler = BackgroundScheduler(timezone=settings.timezone)
     _scheduler.add_job(
@@ -32,7 +32,7 @@ def start() -> None:
     _scheduler.add_job(_refresh_slots, "interval", hours=6, id="slots")
     _scheduler.start()
     _refresh_slots()
-    log.info("Jobs iniciados: follow-up a cada %ss", settings.followup_check_seconds)
+    log.info("Jobs iniciados: follow-up verificado a cada %ss", settings.followup_check_seconds)
 
 
 def stop() -> None:

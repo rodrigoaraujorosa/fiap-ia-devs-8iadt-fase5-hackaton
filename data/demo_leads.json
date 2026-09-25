@@ -1,0 +1,216 @@
+[
+  {
+    "name": "Ana Souza",
+    "phone": "+55 11 98111-2001",
+    "status": "agendado",
+    "route": "agendamento",
+    "profile": {
+      "intent": "compra",
+      "property_type": "apartamento",
+      "budget_max": 1000000,
+      "bedrooms": 2,
+      "regions": ["Vila Mariana", "Moema"],
+      "urgency": "alta",
+      "timeline": "mudar em até 3 meses",
+      "financing": "financiamento bancário",
+      "notes": "Primeiro imóvel do casal; quer perto do metrô e com varanda.",
+      "extra": {"wants_meeting": true}
+    },
+    "messages": [
+      {"role": "user", "minutes_ago": 1560, "content": "Oi! Estou procurando um apartamento para comprar na Vila Mariana ou em Moema"},
+      {"role": "assistant", "minutes_ago": 1559, "agent": "compra_aluguel", "content": "Oi! Eu sou a Laris, da ImobiQ 😊 Que bom que você chegou! Vila Mariana e Moema são ótimas escolhas. Pra eu te mostrar opções certeiras: quantos quartos você precisa?"},
+      {"role": "user", "minutes_ago": 1556, "content": "2 quartos já está ótimo. Sou a Ana, vou comprar com meu marido, é nosso primeiro imóvel"},
+      {"role": "assistant", "minutes_ago": 1555, "agent": "compra_aluguel", "content": "Que momento especial, Ana! 🏡 E qual valor vocês pensam em investir? Vão usar financiamento?"},
+      {"role": "user", "minutes_ago": 1551, "content": "Até 1 milhão, com financiamento. Queremos nos mudar em até 3 meses, perto do metrô se der"},
+      {"role": "assistant", "minutes_ago": 1550, "agent": "compra_aluguel", "property_ids": ["IMV-007", "IMV-002"], "content": "Separei duas opções que combinam com vocês:\n\n- **IMV-007** · Vila Mariana, 2 quartos, 79 m², a 5 min do metrô, R$ 980 mil\n- **IMV-002** · Moema, 67 m², pet friendly, R$ 1,045 mi (um pouco acima, mas vale conhecer)\n\nAlguma chamou sua atenção?"},
+      {"role": "user", "minutes_ago": 1540, "content": "Gostei muito do IMV-007! Dá pra visitar?"},
+      {"role": "assistant", "minutes_ago": 1539, "agent": "agendamento", "content": "Claro! Qual dia e período ficam melhores pra vocês, manhã ou tarde?"},
+      {"role": "user", "minutes_ago": 1536, "content": "Pode ser de manhã, qualquer dia útil"},
+      {"role": "assistant", "minutes_ago": 1535, "agent": "agendamento", "appointment": true, "content": "Prontinho, Ana! ✅ Visita ao **IMV-007** agendada com a Mariana Costa, nossa especialista na zona sul. Ela vai te chamar um dia antes para confirmar. Qualquer coisa, é só me chamar por aqui!"}
+    ],
+    "appointment": {"broker": "mariana.costa@imobiq.example", "business_days_ahead": 2, "hour": 10, "kind": "visita", "property_id": "IMV-007", "notes": "Casal, 1º imóvel, financiamento; gostou da proximidade do metrô."},
+    "summary": {
+      "resumo": "Ana e o marido buscam o primeiro imóvel próprio na Vila Mariana ou em Moema, com até R$ 1 milhão e financiamento. Querem se mudar em até 3 meses e valorizam estar perto do metrô.",
+      "perfil": "Casal, primeiro imóvel, compra financiada, urgência alta",
+      "necessidades": ["Apartamento de 2 quartos", "Vila Mariana ou Moema", "Até R$ 1 milhão", "Perto do metrô, de preferência com varanda"],
+      "imoveis_de_interesse": ["IMV-007", "IMV-002"],
+      "objecoes_e_duvidas": ["O IMV-002 passa um pouco do orçamento"],
+      "proximos_passos": ["Confirmar a visita ao IMV-007 um dia antes", "Levar simulação de financiamento", "Ter uma segunda opção na Vila Mariana até R$ 1 mi"],
+      "abordagem_sugerida": "Tom acolhedor, é a primeira compra: explicar o processo de financiamento passo a passo e reforçar a segurança da decisão."
+    }
+  },
+  {
+    "name": "Bruno Lima",
+    "phone": "+55 11 98111-2002",
+    "status": "agendado",
+    "route": "investimento",
+    "profile": {
+      "intent": "investimento",
+      "property_type": "studio",
+      "regions": ["Moema", "Pinheiros"],
+      "urgency": "media",
+      "timeline": "próximos 6 meses",
+      "investor_profile": "renda com aluguel",
+      "ticket": 700000,
+      "expected_return": "acima de 6% ao ano",
+      "notes": "Já tem um imóvel alugado; quer diversificar com studios perto do metrô.",
+      "extra": {"wants_meeting": true}
+    },
+    "messages": [
+      {"role": "user", "minutes_ago": 2900, "content": "Boa tarde, quero investir em imóvel para renda de aluguel"},
+      {"role": "assistant", "minutes_ago": 2899, "agent": "investimento", "content": "Boa tarde! Eu sou a Laris, da ImobiQ 😊 Ótima estratégia! Qual valor você pensa em investir e que retorno espera?"},
+      {"role": "user", "minutes_ago": 2895, "content": "Uns 700 mil. Quero algo acima de 6% ao ano. Sou o Bruno"},
+      {"role": "assistant", "minutes_ago": 2894, "agent": "investimento", "property_ids": ["IMV-003", "IMV-001"], "content": "Perfeito, Bruno! Studios perto do metrô costumam render bem. Olha estes dois:\n\n- **IMV-003** · Moema, 32 m², rentabilidade estimada de 7,0% a.a., R$ 630 mil\n- **IMV-001** · Moema, 23 m², rentabilidade estimada de 6,8% a.a., R$ 460 mil\n\nQuer conversar com nosso especialista em investimentos para ver números mais detalhados?"},
+      {"role": "user", "minutes_ago": 2885, "content": "Quero sim, pode ser por videochamada na parte da tarde"},
+      {"role": "assistant", "minutes_ago": 2884, "agent": "agendamento", "appointment": true, "content": "Combinado! ✅ Reunião por videochamada com o Carlos Menezes, nosso especialista em investimentos. Ele vai levar a análise de rentabilidade dos dois studios. Até lá!"}
+    ],
+    "appointment": {"broker": "carlos.menezes@imobiq.example", "business_days_ahead": 1, "hour": 15, "kind": "videochamada", "property_id": "IMV-003", "notes": "Investidor, ticket R$ 700 mil, busca > 6% a.a."},
+    "summary": {
+      "resumo": "Bruno é investidor e já tem um imóvel alugado. Quer aplicar cerca de R$ 700 mil em studios perto do metrô, com rentabilidade acima de 6% ao ano, nos próximos 6 meses.",
+      "perfil": "Investidor com experiência, foco em renda de aluguel",
+      "necessidades": ["Studio ou 1 quarto perto do metrô", "Moema ou Pinheiros", "Ticket de até R$ 700 mil", "Rentabilidade acima de 6% a.a."],
+      "imoveis_de_interesse": ["IMV-003", "IMV-001"],
+      "objecoes_e_duvidas": ["Quer ver os números detalhados antes de decidir"],
+      "proximos_passos": ["Levar análise de rentabilidade (aluguel, vacância, condomínio, IPTU)", "Comparar com a opção de comprar dois studios menores", "Apresentar o IMV-032 em Pinheiros como alternativa"],
+      "abordagem_sugerida": "Conversa objetiva e baseada em números: planilha de retorno líquido e comparação com a renda fixa."
+    }
+  },
+  {
+    "name": "Camila Rocha",
+    "phone": "+55 11 98111-2003",
+    "status": "qualificado",
+    "route": "compra_aluguel",
+    "followup": {"count": 0, "due_in_minutes": 1},
+    "profile": {
+      "intent": "aluguel",
+      "property_type": "apartamento",
+      "budget_max": 7000,
+      "bedrooms": 2,
+      "regions": ["Pinheiros", "Perdizes"],
+      "urgency": "alta",
+      "timeline": "mudar no próximo mês",
+      "notes": "Tem um cachorro de porte médio; trabalha de casa e quer um cômodo para escritório.",
+      "extra": {}
+    },
+    "messages": [
+      {"role": "user", "minutes_ago": 95, "content": "Olá, preciso alugar um apê de 2 quartos em Pinheiros ou Perdizes"},
+      {"role": "assistant", "minutes_ago": 94, "agent": "compra_aluguel", "content": "Olá! Eu sou a Laris, da ImobiQ 😊 Vou te ajudar a achar o lugar ideal. Até quanto você pensa em pagar de aluguel?"},
+      {"role": "user", "minutes_ago": 91, "content": "Até 7 mil. Ah, tenho um cachorro, então precisa aceitar pet. Me chamo Camila"},
+      {"role": "assistant", "minutes_ago": 90, "agent": "compra_aluguel", "property_ids": ["IMV-045", "IMV-034"], "content": "Anotado, Camila! 🐶 Separei duas opções que aceitam pet:\n\n- **IMV-045** · Perdizes, 2 quartos, 78 m², R$ 6.450/mês\n- **IMV-034** · Pinheiros, 3 quartos, 96 m², R$ 7.300/mês (um quarto a mais, ótimo para escritório)\n\nPara quando você precisa se mudar?"},
+      {"role": "user", "minutes_ago": 86, "content": "No mês que vem. Gostei do de Perdizes, ele tem varanda?"},
+      {"role": "assistant", "minutes_ago": 85, "agent": "compra_aluguel", "content": "Tem sim, uma varanda gostosa na sala! Quer agendar uma visita para conhecer? Me diz o dia e o período que ficam melhores pra você."}
+    ]
+  },
+  {
+    "name": "Diego Martins",
+    "phone": "+55 11 98111-2004",
+    "status": "em_qualificacao",
+    "route": "compra_aluguel",
+    "followup": {"count": 1, "due_in_minutes": 3},
+    "profile": {
+      "intent": "compra",
+      "property_type": "apartamento",
+      "bedrooms": 2,
+      "regions": ["Tatuapé"],
+      "urgency": "baixa",
+      "timeline": "sem pressa",
+      "extra": {}
+    },
+    "messages": [
+      {"role": "user", "minutes_ago": 240, "content": "Oi, queria ver apartamentos de 2 quartos no Tatuapé"},
+      {"role": "assistant", "minutes_ago": 239, "agent": "compra_aluguel", "content": "Oi! Eu sou a Laris, da ImobiQ 😊 O Tatuapé é ótimo, tem muita coisa boa por lá. Você está pensando em comprar ou alugar?"},
+      {"role": "user", "minutes_ago": 236, "content": "Comprar. Meu nome é Diego, estou sem pressa, só pesquisando por enquanto"},
+      {"role": "assistant", "minutes_ago": 235, "agent": "compra_aluguel", "content": "Tranquilo, Diego, pesquisar com calma é o melhor caminho! Pra eu filtrar bem: qual faixa de valor você tem em mente?"},
+      {"role": "followup", "minutes_ago": 230, "attempt": 1, "content": "Diego, conseguiu pensar numa faixa de valor? Com ela já consigo te mandar umas opções de 2 quartos no Tatuapé 😉"}
+    ]
+  },
+  {
+    "name": "Fernanda Alves",
+    "phone": "+55 11 98111-2005",
+    "status": "encaminhado",
+    "route": "compra_aluguel",
+    "broker": "juliana.pereira@imobiq.example",
+    "profile": {
+      "intent": "aluguel",
+      "property_type": "apartamento",
+      "budget_max": 4500,
+      "bedrooms": 3,
+      "regions": ["Santana"],
+      "urgency": "media",
+      "timeline": "em 2 meses",
+      "notes": "Família com dois filhos; quer negociar o valor do aluguel e o prazo do contrato.",
+      "extra": {"handoff_reason": "negociação de valor e prazo de contrato"}
+    },
+    "messages": [
+      {"role": "user", "minutes_ago": 700, "content": "Boa noite! Procuro apartamento para alugar em Santana, 3 quartos, até 4.500"},
+      {"role": "assistant", "minutes_ago": 699, "agent": "compra_aluguel", "property_ids": ["IMV-059"], "content": "Boa noite! Eu sou a Laris, da ImobiQ 😊 Tenho uma opção que encaixa direitinho:\n\n- **IMV-059** · Santana, 4 quartos, 118 m², perto do metrô, R$ 4.300/mês\n\nO que acha?"},
+      {"role": "user", "minutes_ago": 690, "content": "Gostei! Sou a Fernanda. Mas queria negociar o valor e um contrato de 36 meses, dá?"},
+      {"role": "assistant", "minutes_ago": 689, "agent": "compra_aluguel", "handoff": true, "content": "Ótima pergunta, Fernanda! Negociação de valor e prazo quem conduz é a Juliana Pereira, nossa corretora da zona norte. Já passei todo o seu contexto pra ela, que vai te chamar em breve 😊"}
+    ],
+    "summary": {
+      "resumo": "Fernanda busca apartamento de 3 quartos para alugar em Santana, até R$ 4.500, para mudar em cerca de 2 meses com a família. Gostou do IMV-059 e quer negociar o valor e um contrato de 36 meses.",
+      "perfil": "Família com dois filhos, locação de longo prazo",
+      "necessidades": ["3 quartos ou mais", "Santana", "Até R$ 4.500/mês", "Contrato de 36 meses"],
+      "imoveis_de_interesse": ["IMV-059"],
+      "objecoes_e_duvidas": ["Quer desconto no aluguel", "Quer prazo de contrato maior que o padrão"],
+      "proximos_passos": ["Consultar o proprietário sobre desconto para contrato de 36 meses", "Ligar para a Fernanda com a contraproposta", "Agendar visita ao IMV-059"],
+      "abordagem_sugerida": "Mostrar a vantagem do contrato longo para o proprietário (menos vacância) como argumento na negociação."
+    }
+  },
+  {
+    "name": "Gustavo Pereira",
+    "phone": "+55 11 98111-2006",
+    "status": "perdido",
+    "route": "compra_aluguel",
+    "followup": {"count": 3},
+    "profile": {
+      "intent": "compra",
+      "property_type": "cobertura",
+      "regions": ["Brooklin"],
+      "extra": {}
+    },
+    "messages": [
+      {"role": "user", "minutes_ago": 4300, "content": "vocês tem cobertura no brooklin?"},
+      {"role": "assistant", "minutes_ago": 4299, "agent": "compra_aluguel", "property_ids": ["IMV-011", "IMV-013"], "content": "Oi! Eu sou a Laris, da ImobiQ 😊 Temos sim! Duas coberturas de 3 quartos no Brooklin: **IMV-011** (137 m²) e **IMV-013** (136 m²), a partir de R$ 2,5 mi. Qual o seu nome?"},
+      {"role": "user", "minutes_ago": 4290, "content": "Gustavo. vou ver aqui"},
+      {"role": "assistant", "minutes_ago": 4289, "agent": "compra_aluguel", "content": "Fica à vontade, Gustavo! Se quiser, te conto mais detalhes de alguma delas."},
+      {"role": "followup", "minutes_ago": 4280, "attempt": 1, "content": "Gustavo, conseguiu dar uma olhada nas coberturas do Brooklin? A IMV-011 tem terraço com churrasqueira 😉"},
+      {"role": "followup", "minutes_ago": 4260, "attempt": 2, "content": "Uma curiosidade: o Brooklin é um dos bairros que mais valorizaram na zona sul. Quer que eu compare as duas coberturas pra você?"},
+      {"role": "followup", "minutes_ago": 4220, "attempt": 3, "content": "Vou deixar nossa conversa em aberto, Gustavo. Quando quiser retomar, é só me chamar por aqui 😊"}
+    ]
+  },
+  {
+    "name": "Helena Castro",
+    "phone": "+55 11 98111-2007",
+    "status": "qualificado",
+    "route": "investimento",
+    "profile": {
+      "intent": "investimento",
+      "property_type": "studio",
+      "regions": ["Santana", "zona norte"],
+      "urgency": "baixa",
+      "timeline": "sem pressa, até o fim do ano",
+      "investor_profile": "primeiro investimento, conservadora",
+      "ticket": 400000,
+      "expected_return": "renda mensal estável",
+      "extra": {}
+    },
+    "messages": [
+      {"role": "user", "minutes_ago": 400, "content": "Oi Laris, tenho 400 mil guardados e pensei em comprar um imóvel para alugar. Faz sentido?"},
+      {"role": "assistant", "minutes_ago": 399, "agent": "investimento", "content": "Oi! Faz muito sentido, sim 😊 Imóvel para renda é uma forma segura de ter um ganho mensal. Qual é o seu nome? E é o seu primeiro investimento em imóvel?"},
+      {"role": "user", "minutes_ago": 395, "content": "Helena. Sim, é o primeiro, sou bem conservadora. Moro em Santana e gostaria de algo por aqui"},
+      {"role": "assistant", "minutes_ago": 394, "agent": "investimento", "property_ids": ["IMV-056"], "content": "Ótimo, Helena! Tenho uma opção bem alinhada com o seu perfil:\n\n- **IMV-056** · Santana, studio de 28 m² ao lado do metrô, R$ 360 mil, rentabilidade estimada de 7,0% a.a.\n\nStudios perto do metrô alugam rápido, o que reduz o risco de ficar vazio. Quer que eu marque uma conversa com o nosso especialista em investimentos?"},
+      {"role": "user", "minutes_ago": 380, "content": "Vou pensar e te falo"}
+    ]
+  },
+  {
+    "phone": "+55 11 98111-2008",
+    "status": "novo",
+    "route": "compra_aluguel",
+    "profile": {"extra": {}},
+    "messages": [
+      {"role": "user", "minutes_ago": 6, "content": "Oi, vi o anúncio de vocês"},
+      {"role": "assistant", "minutes_ago": 5, "agent": "compra_aluguel", "content": "Oi! Eu sou a Laris, da ImobiQ 😊 Que bom que você chamou! Você está procurando um imóvel para comprar, alugar ou investir?"}
+    ]
+  }
+]

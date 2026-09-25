@@ -47,3 +47,4 @@ class LeadDetail(LeadOut):
     summary: SummaryOut | None = None
     appointments: list[AppointmentOut] = []
     messages: list[MessageOut] = []
+    missing: list[str] = []  # campos da qualificação ainda não descobertos

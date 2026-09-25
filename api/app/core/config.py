@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -24,7 +25,11 @@ class Settings(BaseSettings):
     llm_agent_effort: str = "low"  # conversa curta e rápida; suba para "medium" se a qualidade pedir
     llm_agent_max_tokens: int = 16000
 
-    # Follow-up automático: 1ª tentativa após N minutos sem resposta, depois 2N, 4N... (cadência crescente)
+    # Base simulada (JSON). Local: <repo>/data | Docker: /data (volume montado)
+    data_dir: Path = Path(__file__).resolve().parents[3] / "data"
+
+    # Follow-up automático: 1ª tentativa após N minutos sem resposta, depois 2N, 4N... (cadência crescente).
+    # Valores padrão: a tela /configuration pode sobrescrevê-los em tempo real (tabela app_settings).
     followup_enabled: bool = True
     followup_minutes: int = 2
     followup_max_attempts: int = 3

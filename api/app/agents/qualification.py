@@ -43,8 +43,8 @@ class LeadAnalysis(BaseModel):
         description="'sim' se o cliente pediu ou aceitou visita/reunião; 'nao' se recusou"
     )
     notes: str = Field(
-        description="Resumo consolidado, em uma frase, de TODAS as outras preferências e contexto do cliente na "
-        "conversa (família, pet, vaga, metrô, imóvel que gostou...), ou ''"
+        description="Resumo consolidado, em uma frase, de TODAS as outras preferências e contexto que o CLIENTE "
+        "expressou (família, pet, vaga, metrô, imóvel que gostou...). Não inclua sugestões feitas só pela SDR. Ou ''"
     )
     route: Route = Field(
         description="'agendamento' se o cliente quer marcar/remarcar visita ou reunião ou está escolhendo horário; "

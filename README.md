@@ -1,4 +1,4 @@
-# 🏠 ImobIA — Agente SDR Imobiliário com IA Generativa
+# 🏠 ImobiQ — Agente SDR Imobiliário com IA Generativa
 
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
@@ -25,7 +25,7 @@ POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)**: um agente SDR que
 | ⚙️ Backend | Python 3.12 · FastAPI · SQLAlchemy · Alembic |
 | 🗄️ Dados | PostgreSQL 16 + pgvector |
 | 🔎 RAG | Busca híbrida: embeddings locais (fastembed, MiniLM multilíngue) + full-text search em português, fundidos por RRF |
-| 🖥️ Frontend | Next.js 16 · TypeScript · Tailwind CSS |
+| 🖥️ Frontend | Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · lucide-react |
 | 📈 Observabilidade | Langfuse |
 | ☁️ Infra | Docker Compose · AWS |
 
@@ -46,9 +46,9 @@ flowchart LR
 ```
 
 - **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada (intenção, orçamento, região, quartos, urgência, perfil investidor...). Regras determinísticas calculam campos faltantes, score (0-100), temperatura e etapa do funil, e escolhem o agente que responde.
-- **Agentes (Sonnet):** persona humanizada ("Lia"), uma pergunta por vez, guiada pela lista de campos faltantes. *Compra e Aluguel* e *Investimentos* qualificam e sugerem imóveis; *Agendamento* consulta a agenda do corretor certo (por zona, ou o especialista em investimentos) e confirma visitas e reuniões.
+- **Agentes (Sonnet):** persona humanizada ("Laris"), uma pergunta por vez, guiada pela lista de campos faltantes. *Compra e Aluguel* e *Investimentos* qualificam e sugerem imóveis; *Agendamento* consulta a agenda do corretor certo (por zona, ou o especialista em investimentos) e confirma visitas e reuniões.
 - **Resumo inteligente:** ao agendar ou encaminhar, o corretor recebe um briefing estruturado (perfil, necessidades, imóveis de interesse, objeções, próximos passos, abordagem sugerida).
-- **Follow-up automático:** um job reserva leads sem resposta (`FOR UPDATE SKIP LOCKED`, seguro com várias instâncias) e envia mensagens com o contexto da conversa. Cada tentativa usa uma estratégia (retomar, agregar valor, encerrar), com cadência crescente; depois da última, o lead vai para *perdido*. Se ele voltar, a conversa continua de onde parou.
+- **Follow-up automático:** um job reserva leads sem resposta (`FOR UPDATE SKIP LOCKED`, seguro com várias instâncias) e envia mensagens com o contexto da conversa. Cada tentativa usa uma estratégia (retomar, agregar valor, encerrar), com cadência crescente; depois da última, o lead vai para *perdido*. Se ele voltar, a conversa continua de onde parou. O envio pode ser pausado, ter a cadência ajustada ou um horário de silêncio definido em tempo real na tela de configurações.
 - **Memória:** o histórico completo (inclusive ferramentas e follow-ups) é o estado do grafo LangGraph, persistido no Postgres pelo checkpointer. A conversa continua mesmo após reiniciar a API.
 - **Observabilidade:** com as chaves do Langfuse no `.env`, cada turno vira um trace agrupado por conversa, com os nós do grafo, cada chamada ao Claude (tokens, cache, latência) e cada ferramenta.
 
@@ -63,14 +63,28 @@ flowchart LR
 | `GET` | `/leads/{lead_id}` | Detalhe do lead: perfil, resumo, agendamentos e conversa |
 | `POST` | `/leads/{lead_id}/summary` | Gera ou atualiza o resumo para o corretor |
 | `GET` | `/appointments` | Próximos agendamentos |
-| `POST` | `/followups/run` | Dispara o ciclo de follow-up na hora (útil na demo) |
+| `GET` | `/dashboard/metrics` | KPIs: funil, temperatura, intenção, agendamentos e follow-ups |
+| `GET` / `PUT` | `/config/followup` | Lê/altera o follow-up em tempo real (liga/desliga, minutos, tentativas, horário de silêncio) |
+| `POST` | `/followups/run` | Dispara o ciclo de follow-up na hora, mesmo pausado (útil na demo) |
+| `POST` | `/admin/demo/reset` | Apaga leads/conversas/agenda e recria os dados de demonstração |
+
+## 🖥️ Telas
+
+| Tela | O que mostra |
+|---|---|
+| 💬 **Chat do lead** (`/chat`) | Conversa no estilo WhatsApp com a Laris: resposta em streaming, indicador do que a IA está fazendo ("consultando imóveis…"), cards dos imóveis sugeridos, confirmação de agendamento e follow-ups que chegam sozinhos. Ao lado, o painel **"O que a IA está entendendo"** mostra em tempo real o agente ativo, score, temperatura, perfil extraído e as próximas perguntas da qualificação. |
+| 📊 **Dashboard do corretor** (`/dashboard`) | Indicadores (leads, taxa de qualificação, quentes, agendamentos, follow-ups), funil por etapa, intenção dos leads, próximos agendamentos e tabela de leads com filtros. Atualiza sozinho a cada 10s. |
+| 🗂️ **Detalhe do lead** (`/dashboard/leads/{id}`) | Resumo inteligente para o corretor (gerar/atualizar), perfil, agendamentos e a conversa completa, com o agente que respondeu cada mensagem e os follow-ups marcados. |
+| ⚙️ **Configurações** (`/configuration`) | Liga/desliga do follow-up com efeito imediato, minutos até a 1ª tentativa, máximo de tentativas, horário de silêncio e botão "rodar agora". Também reseta os dados de demonstração (8 leads em todas as etapas do funil, com conversas, resumos e agendamentos). |
+
+A conversa fica salva no navegador (o lead é retomado ao recarregar); use **Nova conversa** para simular outro lead. Os atalhos iniciais do chat reproduzem os três cenários do enunciado.
 
 ## 📁 Estrutura
 
 ```
 api/    FastAPI + agentes (app/), migrations (alembic/), seed (scripts/), testes (tests/)
 web/    Next.js — chat do lead e dashboard do corretor
-data/   base simulada: 100 imóveis em SP (gerador determinístico) e corretores
+data/   base simulada: 100 imóveis em SP (gerador determinístico), corretores e leads de demonstração
 docs/   arquitetura, explicação da IA e pitch
 ```
 
@@ -81,7 +95,7 @@ Pré-requisitos: Docker Desktop. Para desenvolvimento local: Python 3.12 + [uv](
 ```bash
 cp .env.example .env              # preencha ANTHROPIC_API_KEY
 docker compose up -d --build      # db + api + web
-docker compose exec api python -m scripts.seed
+docker compose exec api python -m scripts.seed --demo   # --demo: cria também os leads de exemplo
 ```
 
 | Serviço | URL |
@@ -113,6 +127,6 @@ uv run ruff check .
 - [x] **Dia 1** — Fundação: Docker Compose, schema (leads, mensagens, imóveis, corretores, agenda), base simulada, RAG híbrido, esqueleto web
 - [x] **Dia 2** — Grafo multiagente (supervisor, compra/aluguel, investidor), extrator de perfil, memória, `/chat` com streaming
 - [x] **Dia 3** — Agente de agendamento, resumo para corretor, follow-up automático, observabilidade (Langfuse)
-- [ ] **Dia 4** — Chat do lead e dashboard do corretor
+- [x] **Dia 4** — Chat do lead (streaming + painel da IA em tempo real), dashboard do corretor e detalhe do lead
 - [ ] **Dia 5** — Diferenciais: deploy AWS, segurança, WhatsApp, Voice AI, CRM
 - [ ] **Dia 6** — Documentação, demo e pitch

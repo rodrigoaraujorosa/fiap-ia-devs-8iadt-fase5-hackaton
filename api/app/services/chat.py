@@ -11,11 +11,11 @@ from datetime import UTC, datetime, timedelta
 
 from app.agents.runtime import get_graph
 from app.core import observability
-from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models import Lead, Message
 from app.models.enums import MessageRole
 from app.schemas.lead import LeadOut
+from app.services.app_config import get_followup_config
 
 log = logging.getLogger(__name__)
 _lead_locks: defaultdict[uuid.UUID, threading.Lock] = defaultdict(threading.Lock)
@@ -36,7 +36,7 @@ def run_turn(lead_id: uuid.UUID, text: str) -> Iterator[dict]:
         lead.next_followup_at = None
         db.commit()
 
-    reply, agent, property_ids = "", None, []
+    reply, agent, property_ids, notices = "", None, [], {}
     graph_input = {"lead_id": str(lead_id), "messages": [{"role": "user", "content": text}]}
     config = {"configurable": {"thread_id": str(lead_id)}}
     with observability.trace("turno", session_id=str(lead_id), input=text) as root:
@@ -47,6 +47,8 @@ def run_turn(lead_id: uuid.UUID, text: str) -> Iterator[dict]:
                     continue
                 if event["type"] == "agent":
                     agent = event["agent"]
+                elif event["type"] in ("appointment", "handoff"):
+                    notices[event["type"]] = {k: v for k, v in event.items() if k != "type"}
                 yield event
         except Exception:
             log.exception("Erro ao processar turno do lead %s", lead_id)
@@ -62,12 +64,12 @@ def run_turn(lead_id: uuid.UUID, text: str) -> Iterator[dict]:
                     role=MessageRole.ASSISTANT,
                     content=reply,
                     agent=agent,
-                    meta={"property_ids": list(dict.fromkeys(property_ids))},
+                    meta={"property_ids": list(dict.fromkeys(property_ids)), **notices},
                 )
             )
             lead.last_message_at = datetime.now(UTC)
             if lead.status in ("novo", "em_qualificacao", "qualificado"):  # agendado/encaminhado não recebem follow-up
-                lead.next_followup_at = lead.last_message_at + timedelta(minutes=get_settings().followup_minutes)
+                lead.next_followup_at = lead.last_message_at + timedelta(minutes=get_followup_config(db).minutes)
         db.commit()
         db.refresh(lead)
         yield {"type": "done", "reply": reply, "agent": agent, "lead": LeadOut.model_validate(lead).model_dump()}
