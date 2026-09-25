@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from app.models import Lead
 from app.models.enums import Intent, LeadStatus, Temperature
 
-Route = Literal["compra_aluguel", "investimento"]
+Route = Literal["compra_aluguel", "investimento", "agendamento"]
 
 
 class LeadAnalysis(BaseModel):
@@ -46,7 +46,10 @@ class LeadAnalysis(BaseModel):
         description="Resumo consolidado, em uma frase, de TODAS as outras preferências e contexto do cliente na "
         "conversa (família, pet, vaga, metrô, imóvel que gostou...), ou ''"
     )
-    route: Route = Field(description="'investimento' para investidores; senão 'compra_aluguel'")
+    route: Route = Field(
+        description="'agendamento' se o cliente quer marcar/remarcar visita ou reunião ou está escolhendo horário; "
+        "senão 'investimento' para investidores; senão 'compra_aluguel'"
+    )
 
 
 # Campos que o SDR precisa coletar, por intenção, em ordem de prioridade

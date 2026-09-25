@@ -73,3 +73,27 @@ def test_memoria_entre_turnos(db):
     _talk(lead.id, "Oi, meu nome é Juliana e tenho um gato chamado Frajola")
     events = _talk(lead.id, "Qual é o nome do meu gato?")
     assert "frajola" in events[-1]["reply"].lower()
+
+
+def test_agendamento_de_visita(db):
+    lead = _new_lead(db)
+    _talk(lead.id, "Quero alugar um studio mobiliado no centro, até 3 mil. Sou a Paula, preciso mudar em 2 semanas")
+    events = _talk(lead.id, "Quero visitar o primeiro que você mostrou. Pode ser no próximo dia útil, de tarde?")
+    assert any(e["type"] == "agent" and e["agent"] == "agendamento" for e in events)
+    if not any(e["type"] == "appointment" for e in events):  # o agente pode primeiro oferecer opções
+        events = _talk(lead.id, "Pode ser o primeiro horário que você falou")
+    appointment = next(e for e in events if e["type"] == "appointment")
+    assert appointment["tipo"] == "visita" and appointment["com"]
+    assert events[-1]["lead"]["status"] == "agendado"
+
+
+def test_exemplo_3_follow_up_com_contexto(db):
+    from app.jobs.followup import send_followup
+
+    lead = _new_lead(db)
+    _talk(lead.id, "Oi, sou o Bruno e quero alugar um apê de 2 quartos na zona oeste até 5 mil")
+    db.refresh(lead)
+    text = send_followup(lead.id, 0, lead.last_lead_message_at)
+    assert text and "bruno" in text.lower()
+    events = _talk(lead.id, "Oi, voltei! O que você tinha me perguntado mesmo?")
+    assert events[-1]["reply"]

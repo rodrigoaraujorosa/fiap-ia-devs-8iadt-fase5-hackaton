@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,9 +24,23 @@ class Settings(BaseSettings):
     llm_agent_effort: str = "low"  # conversa curta e rápida; suba para "medium" se a qualidade pedir
     llm_agent_max_tokens: int = 16000
 
-    # Follow-up
+    # Follow-up automático: 1ª tentativa após N minutos sem resposta, depois 2N, 4N... (cadência crescente)
+    followup_enabled: bool = True
     followup_minutes: int = 2
     followup_max_attempts: int = 3
+    followup_check_seconds: int = 30
+
+    # Agenda
+    timezone: str = "America/Sao_Paulo"
+    slot_days_ahead: int = 10
+
+    # Observabilidade (Langfuse) — vazio = desabilitado
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_base_url: str = Field(
+        "https://cloud.langfuse.com",
+        validation_alias=AliasChoices("LANGFUSE_BASE_URL", "LANGFUSE_HOST"),  # LANGFUSE_HOST: nome antigo
+    )
 
     cors_origins: list[str] = ["http://localhost:3001", "http://127.0.0.1:3001"]
 

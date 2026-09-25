@@ -57,9 +57,10 @@ região ou bairros, faixa de preço, quantidade de quartos, tipo de imóvel, urg
 forma de pagamento (financiamento, à vista, FGTS). Também vale entender o momento de vida (família crescendo, \
 primeiro imóvel, trabalho perto) — isso ajuda a recomendar melhor.
 
-Identifique a urgência: se a pessoa precisa se mudar em breve ou está decidida, é um lead quente e vale \
-propor uma visita ou conversa com um corretor. Quando a qualificação estiver completa ou o cliente demonstrar \
-interesse claro em um imóvel, proponha agendar uma visita com um de nossos corretores.
+Identifique a urgência: se a pessoa precisa se mudar em breve ou está decidida, é um lead quente. Quando a \
+qualificação estiver completa ou o cliente demonstrar interesse claro em um imóvel, proponha agendar uma visita \
+aqui mesmo pelo chat e pergunte qual dia e período (manhã ou tarde) ficam melhores — os horários disponíveis \
+serão consultados na sequência.
 """,
     "investimento": """\
 Especialidade atual: atendimento de INVESTIDORES em imóveis.
@@ -75,13 +76,36 @@ filtro min_yield quando o cliente falar em retorno. Ao comentar rentabilidade, d
 bruta, sem garantia, e compare com a expectativa dele de forma honesta.
 
 Quando entender o perfil e o ticket, direcione para o nosso especialista em investimentos, Carlos Menezes, \
-que faz a análise detalhada — proponha uma reunião com ele.
+que faz a análise detalhada: proponha uma reunião com ele (presencial ou por vídeo) aqui mesmo pelo chat e \
+pergunte qual dia e período ficam melhores — os horários disponíveis serão consultados na sequência.
+""",
+    "agendamento": """\
+Especialidade atual: AGENDAMENTO de visitas e reuniões.
+
+O cliente quer marcar (ou remarcar) uma visita a um imóvel ou uma reunião com um especialista. Seu trabalho:
+1. Use listar_horarios com o tipo certo ('visita' para conhecer imóvel com corretor; 'reuniao' para investidores \
+com o especialista Carlos Menezes) e, se o cliente indicou, o dia (converta "amanhã", "sexta" etc. para a data \
+AAAA-MM-DD usando a data de hoje do contexto) e o período. Passe o property_id quando for visita a um imóvel.
+2. Ofereça 2 ou 3 opções de forma natural, com dia, horário e o nome de quem vai atender. Não mostre slot_id.
+3. Quando o cliente escolher, chame agendar com o slot_id correspondente e confirme de forma calorosa: \
+dia, horário, com quem e (se houver) qual imóvel. Diga que o corretor recebe um resumo da conversa, então o \
+cliente não vai precisar repetir tudo.
+4. Se nada servir, pergunte outra preferência ou ofereça que um corretor ligue (transferir_para_humano).
+
+Atendemos em dias úteis, das 9h às 18h. Nunca confirme um horário sem ter chamado agendar com sucesso.
+Depois de agendado, se o cliente tiver outras dúvidas, responda normalmente.
 """,
 }
 
+HANDOFF_RULE = """
+Encaminhamento humano: se o cliente pedir para falar com uma pessoa, pedir ligação ou trouxer algo que você não \
+pode resolver, use transferir_para_humano e avise que um corretor vai entrar em contato. Fora disso, nunca diga \
+que alguém vai entrar em contato — ofereça agendar aqui mesmo.
+"""
+
 
 def system_prompt(route: str) -> str:
-    return f"{PERSONA}\n{SPECIALISTS[route]}"
+    return f"{PERSONA}\n{SPECIALISTS[route]}{HANDOFF_RULE}"
 
 
 def _profile_view(lead: Lead) -> dict:
@@ -94,7 +118,7 @@ def _profile_view(lead: Lead) -> dict:
     return view
 
 
-def lead_context(lead: Lead, missing: list[str]) -> str:
+def lead_context(lead: Lead, missing: list[str], appointment: str | None = None) -> str:
     now = datetime.now(ZoneInfo("America/Sao_Paulo"))
     pending = ", ".join(FIELD_LABELS[f] for f in missing) or "nada — qualificação completa"
     return (
@@ -104,5 +128,7 @@ def lead_context(lead: Lead, missing: list[str]) -> str:
         f"Perfil já coletado: {json.dumps(_profile_view(lead), ensure_ascii=False)}\n"
         f"Temperatura do lead: {lead.temperature} (score {lead.score}/100)\n"
         f"Ainda falta descobrir, em ordem de prioridade: {pending}\n"
+        f"Etapa do funil: {lead.status}\n"
+        f"Agendamento: {appointment or 'nenhum'}\n"
         "</contexto_interno>"
     )

@@ -8,23 +8,19 @@ Uso:
 import argparse
 import json
 import os
-import random
-from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.db.session import SessionLocal
-from app.models import Broker, Property, Slot
+from app.models import Broker, Property
 from app.services.embeddings import embed_texts
+from app.services.scheduling import ensure_future_slots
 
 # Local: <repo>/data | Docker: /data (volume montado)
 DATA_DIR = Path(os.getenv("DATA_DIR", Path(__file__).resolve().parents[2] / "data"))
-TZ = ZoneInfo("America/Sao_Paulo")
-SLOT_DAYS = 10
-SLOT_HOURS = range(9, 18)
 PREBOOKED_RATIO = 0.25
 
 
@@ -55,45 +51,17 @@ def seed_properties(db: Session) -> None:
         print("Embeddings gerados.")
 
 
-def seed_brokers(db: Session) -> list[Broker]:
+def seed_brokers(db: Session) -> None:
     existing = {b.email for b in db.scalars(select(Broker))}
     new = [Broker(**b) for b in load_json("brokers.json") if b["email"] not in existing]
     db.add_all(new)
     db.commit()
     print(f"Corretores: {len(new)} inseridos ({len(existing)} já existiam).")
-    return list(db.scalars(select(Broker)))
 
 
-def business_days(start: date, count: int) -> list[date]:
-    days, d = [], start
-    while len(days) < count:
-        d += timedelta(days=1)
-        if d.weekday() < 5:
-            days.append(d)
-    return days
-
-
-def seed_slots(db: Session, brokers: list[Broker]) -> None:
-    rng = random.Random(7)
-    existing = {(s.broker_id, s.start_at) for s in db.scalars(select(Slot))}
-    created = 0
-    for broker in brokers:
-        for day in business_days(datetime.now(TZ).date(), SLOT_DAYS):
-            for hour in SLOT_HOURS:
-                start = datetime.combine(day, time(hour), tzinfo=TZ)
-                if (broker.id, start) in existing:
-                    continue
-                db.add(
-                    Slot(
-                        broker_id=broker.id,
-                        start_at=start,
-                        end_at=start + timedelta(hours=1),
-                        is_booked=rng.random() < PREBOOKED_RATIO,
-                    )
-                )
-                created += 1
-    db.commit()
-    print(f"Horários: {created} criados para os próximos {SLOT_DAYS} dias úteis.")
+def seed_slots(db: Session) -> None:
+    created = ensure_future_slots(db, prebooked_ratio=PREBOOKED_RATIO, seed=7)  # parte já ocupada, mais realista
+    print(f"Horários: {created} criados para os próximos {get_settings().slot_days_ahead} dias úteis.")
 
 
 def main() -> None:
@@ -105,8 +73,8 @@ def main() -> None:
         if args.reset:
             reset(db)
         seed_properties(db)
-        brokers = seed_brokers(db)
-        seed_slots(db, brokers)
+        seed_brokers(db)
+        seed_slots(db)
     print("Seed concluído ✅")
 
 

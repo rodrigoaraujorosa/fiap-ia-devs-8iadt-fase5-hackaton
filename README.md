@@ -35,23 +35,35 @@ POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)**: um agente SDR que
 flowchart LR
     U([Mensagem do lead]) --> S[Supervisor<br/>Claude Haiku 4.5]
     S -->|extrai perfil, score e funil| CRM[(Postgres<br/>CRM + memória)]
-    S -->|compra / aluguel| A1[Especialista Compra e Aluguel<br/>Claude Sonnet 5]
-    S -->|investimento| A2[Especialista Investimentos<br/>Claude Sonnet 5]
-    A1 & A2 -->|tool use| T[buscar_imoveis · detalhes_imovel<br/>RAG híbrido]
-    A1 & A2 -->|streaming SSE| R([Resposta])
+    S -->|compra / aluguel| A1[Compra e Aluguel<br/>Claude Sonnet 5]
+    S -->|investimento| A2[Investimentos<br/>Claude Sonnet 5]
+    S -->|quer marcar| A3[Agendamento<br/>Claude Sonnet 5]
+    A1 & A2 -->|tool use| T1[buscar_imoveis · detalhes_imovel<br/>RAG híbrido]
+    A3 -->|tool use| T2[listar_horarios · agendar]
+    A1 & A2 & A3 -.->|transferir_para_humano| H[Corretor + resumo]
+    A3 -->|ao agendar| RES[Resumo para o corretor<br/>saída estruturada]
+    J[[Job de follow-up<br/>APScheduler]] -->|lead sem resposta| F[Mensagem contextual<br/>cadência 2N, 4N...]
 ```
 
-- **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada (intenção, orçamento, região, quartos, urgência, perfil investidor...). Regras determinísticas calculam campos faltantes, score (0-100), temperatura e etapa do funil, e escolhem o especialista.
-- **Especialistas (Sonnet):** persona humanizada ("Lia"), uma pergunta por vez, guiada pela lista de campos faltantes; buscam imóveis via tool use e respondem em streaming.
-- **Memória:** o histórico completo (inclusive chamadas de ferramentas) é o estado do grafo LangGraph, persistido no Postgres pelo checkpointer — a conversa continua mesmo após reiniciar a API.
+- **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada (intenção, orçamento, região, quartos, urgência, perfil investidor...). Regras determinísticas calculam campos faltantes, score (0-100), temperatura e etapa do funil, e escolhem o agente que responde.
+- **Agentes (Sonnet):** persona humanizada ("Lia"), uma pergunta por vez, guiada pela lista de campos faltantes. *Compra e Aluguel* e *Investimentos* qualificam e sugerem imóveis; *Agendamento* consulta a agenda do corretor certo (por zona, ou o especialista em investimentos) e confirma visitas e reuniões.
+- **Resumo inteligente:** ao agendar ou encaminhar, o corretor recebe um briefing estruturado (perfil, necessidades, imóveis de interesse, objeções, próximos passos, abordagem sugerida).
+- **Follow-up automático:** um job reserva leads sem resposta (`FOR UPDATE SKIP LOCKED`, seguro com várias instâncias) e envia mensagens com o contexto da conversa. Cada tentativa usa uma estratégia (retomar, agregar valor, encerrar), com cadência crescente; depois da última, o lead vai para *perdido*. Se ele voltar, a conversa continua de onde parou.
+- **Memória:** o histórico completo (inclusive ferramentas e follow-ups) é o estado do grafo LangGraph, persistido no Postgres pelo checkpointer. A conversa continua mesmo após reiniciar a API.
+- **Observabilidade:** com as chaves do Langfuse no `.env`, cada turno vira um trace agrupado por conversa, com os nós do grafo, cada chamada ao Claude (tokens, cache, latência) e cada ferramenta.
 
-### 💬 API de chat
+### 💬 API
 
 | Método | Rota | Descrição |
 |---|---|---|
 | `POST` | `/chat/sessions` | Inicia uma conversa (cria o lead) |
-| `POST` | `/chat/{lead_id}/messages` | Envia mensagem; resposta via **SSE** (`analysis`, `agent`, `token`, `tool`, `properties`, `done`) |
-| `GET` | `/chat/{lead_id}/messages` | Histórico da conversa |
+| `POST` | `/chat/{lead_id}/messages` | Envia mensagem; resposta via **SSE** (`analysis`, `agent`, `token`, `tool`, `properties`, `appointment`, `handoff`, `done`) |
+| `GET` | `/chat/{lead_id}/messages` | Histórico da conversa (inclui follow-ups) |
+| `GET` | `/leads` | Leads com score, temperatura e etapa do funil (filtros: `status`, `temperature`, `intent`) |
+| `GET` | `/leads/{lead_id}` | Detalhe do lead: perfil, resumo, agendamentos e conversa |
+| `POST` | `/leads/{lead_id}/summary` | Gera ou atualiza o resumo para o corretor |
+| `GET` | `/appointments` | Próximos agendamentos |
+| `POST` | `/followups/run` | Dispara o ciclo de follow-up na hora (útil na demo) |
 
 ## 📁 Estrutura
 
@@ -100,7 +112,7 @@ uv run ruff check .
 
 - [x] **Dia 1** — Fundação: Docker Compose, schema (leads, mensagens, imóveis, corretores, agenda), base simulada, RAG híbrido, esqueleto web
 - [x] **Dia 2** — Grafo multiagente (supervisor, compra/aluguel, investidor), extrator de perfil, memória, `/chat` com streaming
-- [ ] **Dia 3** — Agendamento, resumo para corretor, follow-up automático, Langfuse
+- [x] **Dia 3** — Agente de agendamento, resumo para corretor, follow-up automático, observabilidade (Langfuse)
 - [ ] **Dia 4** — Chat do lead e dashboard do corretor
 - [ ] **Dia 5** — Diferenciais: deploy AWS, segurança, WhatsApp, Voice AI, CRM
 - [ ] **Dia 6** — Documentação, demo e pitch
