@@ -10,6 +10,7 @@ Eventos para a interface (tokens, tools, imóveis, agendamentos) saem pelo strea
 
 import logging
 import operator
+import re
 import uuid
 from datetime import datetime
 from typing import Annotated, Any, TypedDict
@@ -35,6 +36,7 @@ log = logging.getLogger(__name__)
 
 AGENTS = ("compra_aluguel", "investimento", "agendamento")
 MAX_TOOL_ROUNDS = 6
+PROPERTY_CODE = re.compile(r"IMV-\d+", re.IGNORECASE)
 FALLBACK_REPLY = "Desculpe, tive uma instabilidade aqui. Pode repetir sua última mensagem, por favor?"
 REFUSAL_REPLY = "Esse assunto eu não consigo tratar por aqui, mas posso te ajudar a encontrar o imóvel ideal. 🙂"
 
@@ -46,12 +48,19 @@ Regras:
 - Registre apenas o que o cliente disse (ou confirmou). Não invente nem deduza valores que ele não deu.
 - Considere a conversa inteira; se o cliente mudou de ideia, use a informação mais recente.
 - Valores em reais como inteiros: "900 mil" → 900000; "1,2 milhão" → 1200000; "até 4 mil de aluguel" → budget_max 4000.
-- Regiões: as que o cliente pediu, mais bairros que ele aceitou ou elogiou (não os bairros de imóveis que a SDR \
-apenas mostrou). Nunca remova a região pedida originalmente, a menos que o cliente desista dela. \
-Normalize zonas como "zona sul", "zona oeste", "zona norte", "zona leste", "centro"; mantenha bairros \
-com o nome próprio (ex.: "Moema").
-- intent: "investimento" quando o objetivo é renda ou valorização (mesmo que vá comprar); "compra" para morar; \
-"aluguel" para alugar para si; "indefinido" se ainda não ficou claro.
+- "Até 2 mil" é budget_max 2000 e budget_min 0. Nunca use o preço de um imóvel mostrado pela SDR como orçamento.
+- Regiões: só as zonas ou bairros que o próprio cliente escreveu. Bairros de imóveis que a SDR mostrou NÃO entram, \
+mesmo que o cliente goste do imóvel (registre o imóvel preferido em notes). Se o cliente disse que não tem \
+preferência de região, use ["sem preferência"]. Nunca remova a região pedida originalmente, a menos que o \
+cliente desista dela. Normalize zonas como "zona sul", "zona oeste", "zona norte", "zona leste", "centro"; \
+mantenha bairros com o nome próprio (ex.: "Moema").
+- intent: só com base no que o cliente declarou. "investimento" quando o objetivo é renda ou valorização (mesmo \
+que vá comprar); "compra" para morar; "aluguel" para alugar para si. Se ele ainda não disse se quer comprar, \
+alugar ou investir, use "indefinido" — nunca deduza pela faixa de valor ("até 2 mil" não significa aluguel) \
+nem por ele ter gostado de imóveis que a SDR buscou.
+- intent_evidence: copie letra por letra o trecho do cliente que declara a finalidade; sem ele, o intent \
+é descartado.
+- phone: telefone ou WhatsApp que o cliente digitou. declined_phone "sim" só se a SDR pediu e ele recusou.
 - urgency: calcule pelo prazo em relação à data de hoje (até 1 mês = alta; 1 a 6 meses = media; mais que isso \
 ou sem prazo = baixa). "desconhecida" se o cliente ainda não falou de prazo.
 - route (quem responde a última mensagem do cliente):
@@ -81,6 +90,20 @@ def _appointment_text(db, lead_id) -> str | None:
 # ---------------------------------------------------------------- supervisor
 
 
+def _client_text(messages: list[dict]) -> str:
+    """Só o que o cliente escreveu (sem resultados de ferramentas), para conferir as citações do analisador."""
+    parts = []
+    for m in messages:
+        if m["role"] != "user":
+            continue
+        content = m["content"]
+        if isinstance(content, str):
+            parts.append(content)
+        else:
+            parts.extend(b["text"] for b in content if b.get("type") == "text")
+    return "\n".join(parts)
+
+
 def supervisor(state: AgentState) -> dict:
     settings = get_settings()
     writer = get_stream_writer()
@@ -104,7 +127,7 @@ def supervisor(state: AgentState) -> dict:
                 gen.update(output=response.parsed_output, usage_details=usage_details(response))
             analysis = response.parsed_output
             if analysis:
-                apply_analysis(lead, analysis)
+                apply_analysis(lead, analysis, _client_text(state["messages"]))
                 if analysis.route == "agendamento":
                     route = "agendamento"
                 elif lead.intent == Intent.INVESTIMENTO:
@@ -136,8 +159,11 @@ def _assistant_turn(content: list[Any]) -> dict[str, Any]:
     return {"role": "assistant", "content": [b.model_dump(exclude_none=True) for b in content]}
 
 
-def _call_claude(route: str, system: list[dict], messages: list[dict], writer, prefix_break: bool):
-    """Uma chamada ao modelo principal, com streaming dos tokens para a interface."""
+def _call_claude(route: str, system: list[dict], messages: list[dict], writer, new_bubble: bool):
+    """Uma chamada ao modelo principal, com streaming dos tokens para a interface.
+
+    new_bubble: já houve texto antes (numa rodada com ferramenta); o novo texto vira outro balão.
+    """
     settings = get_settings()
     started_text = False
     with observability.observation(
@@ -154,8 +180,8 @@ def _call_claude(route: str, system: list[dict], messages: list[dict], writer, p
         ) as stream:
             for event in stream:
                 if event.type == "text":
-                    if not started_text and prefix_break:
-                        writer({"type": "token", "text": "\n\n"})
+                    if not started_text and new_bubble:
+                        writer({"type": "bubble"})
                     started_text = True
                     writer({"type": "token", "text": event.text})
             response = stream.get_final_message()
@@ -190,6 +216,8 @@ def make_agent(route: str):
                     response = _call_claude(route, system, history + new_messages, writer, bool(reply_parts))
                 except (anthropic.APIError, ValueError):
                     log.exception("Falha na chamada do agente %s", route)
+                    if reply_parts:
+                        writer({"type": "bubble"})
                     reply_parts.append(FALLBACK_REPLY)
                     writer({"type": "token", "text": FALLBACK_REPLY})
                     new_messages.append({"role": "assistant", "content": FALLBACK_REPLY})
@@ -200,6 +228,8 @@ def make_agent(route: str):
                     reply_parts.append(text)
 
                 if response.stop_reason == "refusal":
+                    if reply_parts:
+                        writer({"type": "bubble"})
                     reply_parts.append(REFUSAL_REPLY)
                     writer({"type": "token", "text": REFUSAL_REPLY})
                     new_messages.append({"role": "assistant", "content": REFUSAL_REPLY})
@@ -237,8 +267,11 @@ def make_agent(route: str):
                 new_messages.append({"role": "user", "content": results})
 
             reply = "\n\n".join(reply_parts)
+            # cards só dos imóveis que a Laris citou no texto (a busca pode ter trazido mais), na ordem citada
+            cited = dict.fromkeys(code.upper() for code in PROPERTY_CODE.findall(reply))
+            shown = [code for code in cited if code in property_ids]
             span.update(output=reply)
-            writer({"type": "reply", "text": reply, "property_ids": property_ids})
+            writer({"type": "reply", "text": reply, "bubbles": reply_parts, "property_ids": shown})
         return {"messages": new_messages}
 
     agent.__name__ = route

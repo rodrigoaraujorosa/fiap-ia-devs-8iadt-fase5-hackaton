@@ -1,13 +1,21 @@
 """Regras determinísticas de qualificação (não chamam LLM nem banco)."""
 
-from app.agents.qualification import LeadAnalysis, apply_analysis, compute_score, missing_fields, refresh_funnel
+from app.agents.qualification import (
+    LeadAnalysis,
+    apply_analysis,
+    compute_score,
+    missing_fields,
+    normalize_phone,
+    refresh_funnel,
+)
 from app.models import Lead
 from app.models.enums import LeadStatus, Temperature
 
 
 def _analysis(**overrides) -> LeadAnalysis:
     base = dict(
-        name="", intent="indefinido", property_type="", budget_min=0, budget_max=0, bedrooms=0, regions=[],
+        name="", phone="", declined_phone="nao", intent_evidence="", intent="indefinido", property_type="",
+        budget_min=0, budget_max=0, bedrooms=0, regions=[],
         urgency="desconhecida", timeline="", financing="", investor_profile="", ticket=0, expected_return="",
         wants_meeting="nao_informado", notes="", route="compra_aluguel",
     )  # fmt: skip
@@ -74,3 +82,39 @@ def test_funnel_status_becomes_qualified_when_complete():
     lead.status = LeadStatus.AGENDADO  # etapas posteriores não regridem
     refresh_funnel(lead)
     assert lead.status == LeadStatus.AGENDADO
+
+
+def test_normalize_phone():
+    assert normalize_phone("11 98888-7777") == "+55 11 98888-7777"
+    assert normalize_phone("+55 (11) 98888-7777") == "+55 11 98888-7777"
+    assert normalize_phone("1133334444") == "+55 11 3333-4444"
+    assert normalize_phone("123") is None
+    assert normalize_phone("") is None
+
+
+def test_phone_is_captured_and_scores():
+    lead = _lead(name="Rodrigo")
+    before = compute_score(lead)
+    apply_analysis(lead, _analysis(phone="(11) 98888-7777"))
+    assert lead.phone == "+55 11 98888-7777"
+    assert compute_score(lead) == before + 5
+
+
+def test_declined_phone_is_remembered():
+    lead = _lead()
+    apply_analysis(lead, _analysis(declined_phone="sim"))
+    assert lead.phone is None and lead.extra["phone_declined"] is True
+    apply_analysis(lead, _analysis(phone="garbage"))  # texto que não é telefone não sobrescreve nada
+    assert lead.phone is None
+
+
+def test_intent_requires_quote_from_client():
+    """O analisador não pode 'deduzir' a finalidade: sem citação real do cliente, fica indefinido."""
+    client = "Oi, procuro um apartamento perto do metrô. Meu orçamento é até 2 mil reais"
+    lead = _lead()
+    apply_analysis(lead, _analysis(intent="compra", intent_evidence=""), client)
+    assert lead.intent == "indefinido"
+    apply_analysis(lead, _analysis(intent="aluguel", intent_evidence="é para alugar"), client)
+    assert lead.intent == "indefinido"  # citação inventada
+    apply_analysis(lead, _analysis(intent="aluguel", intent_evidence="E para ALUGAR!"), client + ". É para alugar.")
+    assert lead.intent == "aluguel"  # acento, caixa e pontuação não importam

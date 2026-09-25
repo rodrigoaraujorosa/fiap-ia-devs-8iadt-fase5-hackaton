@@ -35,6 +35,21 @@ class Settings(BaseSettings):
     followup_max_attempts: int = 3
     followup_check_seconds: int = 30
 
+    # E-mail aos corretores (resumo + convite de calendário). Padrão: Mailpit local (nada sai de verdade).
+    # Produção: SMTP da Hostinger (smtp.hostinger.com, porta 465, SMTP_SSL=true, usuário/senha da caixa remetente).
+    smtp_host: str = "127.0.0.1"
+    smtp_port: int = 1025
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_ssl: bool = False  # TLS implícito (porta 465)
+    smtp_starttls: bool = False  # STARTTLS (porta 587)
+    email_from: str = "Laris · ImobiQ <laris@arrtsoftware.com.br>"
+    # Valores iniciais: a tela /configuration altera em tempo real
+    email_enabled: bool = True
+    email_demo_mode: bool = True  # entrega tudo na caixa de demonstração
+    email_demo_recipient: str = "corretor@arrtsoftware.com.br"
+    public_app_url: str = "http://localhost:3001"  # links "Abrir no dashboard" nos e-mails
+
     # Agenda
     timezone: str = "America/Sao_Paulo"
     slot_days_ahead: int = 10

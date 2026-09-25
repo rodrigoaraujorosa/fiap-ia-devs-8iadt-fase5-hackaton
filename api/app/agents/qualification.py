@@ -3,6 +3,8 @@
 Tudo aqui é determinístico (sem LLM), para ser explicável no pitch e testável.
 """
 
+import re
+import unicodedata
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -21,14 +23,28 @@ class LeadAnalysis(BaseModel):
     """
 
     name: str = Field(description="Primeiro nome do cliente, ou '' se não informou")
+    phone: str = Field(description="Telefone/WhatsApp que o cliente informou, com DDD, ou ''")
+    declined_phone: Literal["sim", "nao"] = Field(
+        description="'sim' se o cliente se recusou a informar o telefone quando a SDR pediu"
+    )
+    intent_evidence: str = Field(
+        description="Trecho copiado LITERALMENTE de uma mensagem do cliente em que ele diz se quer comprar, alugar "
+        "ou investir (ex.: 'é para alugar'); '' se ele ainda não disse"
+    )
     intent: Literal["compra", "aluguel", "investimento", "indefinido"] = Field(
-        description="Objetivo principal do cliente considerando toda a conversa"
+        description="Objetivo que o CLIENTE declarou (comprar, alugar ou investir). 'indefinido' se ele ainda não "
+        "disse: nunca deduza pela faixa de valor, pelo tipo de imóvel nem pelos imóveis que a SDR mostrou"
     )
     property_type: str = Field(description="apartamento, casa, studio, cobertura, sala comercial, ou ''")
-    budget_min: int = Field(description="Valor mínimo em reais (compra: total; aluguel: mensal), ou 0")
+    budget_min: int = Field(
+        description="Valor mínimo que o cliente disse (ex.: 'entre 1.500 e 2.000' → 1500), ou 0. 'Até X' → 0"
+    )
     budget_max: int = Field(description="Valor máximo em reais (compra: total; aluguel: mensal), ou 0")
     bedrooms: int = Field(description="Quantidade mínima de quartos desejada, ou 0")
-    regions: list[str] = Field(description="Zonas ou bairros de interesse, ex.: ['zona sul', 'Moema']; [] se nenhum")
+    regions: list[str] = Field(
+        description="Zonas ou bairros que o CLIENTE citou, ex.: ['zona sul', 'Moema']; ['sem preferência'] se ele "
+        "disse que tanto faz; [] se ainda não falou"
+    )
     urgency: Literal["alta", "media", "baixa", "desconhecida"] = Field(
         description="alta: até 1 mês ou urgente; media: 1 a 6 meses; baixa: sem pressa ou só pesquisando"
     )
@@ -74,24 +90,58 @@ FIELD_LABELS = {
     "expected_return": "expectativa de retorno",
 }
 
-_UPDATABLE = [f for f in LeadAnalysis.model_fields if f not in ("route", "intent", "wants_meeting", "notes")]
+_SPECIAL = ("route", "intent", "intent_evidence", "wants_meeting", "notes", "phone", "declined_phone")
+_UPDATABLE = [f for f in LeadAnalysis.model_fields if f not in _SPECIAL]
+
+
+def normalize_phone(raw: str) -> str | None:
+    """Telefone brasileiro no formato '+55 11 98111-2001'; None se não parecer um telefone válido."""
+    digits = re.sub(r"\D", "", raw or "")
+    if len(digits) in (12, 13) and digits.startswith("55"):
+        digits = digits[2:]
+    if len(digits) not in (10, 11):
+        return None
+    ddd, number = digits[:2], digits[2:]
+    return f"+55 {ddd} {number[:-4]}-{number[-4:]}"
 
 
 def _informed(value) -> bool:
     return value not in (None, "", 0, [], "desconhecida", "nao_informado")
 
 
-def apply_analysis(lead: Lead, analysis: LeadAnalysis) -> None:
-    """Mescla a análise no lead: só sobrescreve o que veio informado."""
-    if analysis.intent != Intent.INDEFINIDO or not lead.intent:
-        lead.intent = analysis.intent
+def _plain(text: str) -> str:
+    text = unicodedata.normalize("NFD", text.lower())
+    return " ".join("".join(c if c.isalnum() else " " for c in text if unicodedata.category(c) != "Mn").split())
+
+
+def intent_is_grounded(analysis: LeadAnalysis, client_text: str) -> bool:
+    """A finalidade só vale se o trecho citado pelo analisador existir mesmo nas mensagens do cliente."""
+    evidence = _plain(analysis.intent_evidence)
+    return bool(evidence) and evidence in _plain(client_text)
+
+
+def apply_analysis(lead: Lead, analysis: LeadAnalysis, client_text: str | None = None) -> None:
+    """Mescla a análise no lead: só sobrescreve o que veio informado.
+
+    client_text (mensagens do cliente): quando informado, a finalidade só é aceita com citação verificável,
+    para o LLM não "deduzir" compra ou aluguel pela faixa de valor.
+    """
+    intent = analysis.intent
+    if intent != Intent.INDEFINIDO and client_text is not None and not intent_is_grounded(analysis, client_text):
+        intent = Intent.INDEFINIDO
+    if intent != Intent.INDEFINIDO or not lead.intent:
+        lead.intent = intent
     for field in _UPDATABLE:
         value = getattr(analysis, field)
         if isinstance(value, str):
             value = value.strip()
         if _informed(value):
             setattr(lead, field, value)
+    if phone := normalize_phone(analysis.phone):
+        lead.phone = phone
     extra = dict(lead.extra or {})
+    if analysis.declined_phone == "sim" and not lead.phone:
+        extra["phone_declined"] = True
     if analysis.wants_meeting != "nao_informado":
         extra["wants_meeting"] = analysis.wants_meeting == "sim"
     if analysis.notes.strip():
@@ -125,6 +175,8 @@ def compute_score(lead: Lead) -> int:
     if lead.financing:
         score += 5
     if lead.name:
+        score += 5
+    if lead.phone:
         score += 5
     if (lead.extra or {}).get("wants_meeting"):
         score += 20

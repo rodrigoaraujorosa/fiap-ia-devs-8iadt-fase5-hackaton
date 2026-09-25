@@ -34,9 +34,11 @@ def test_exemplo_1_compra_zona_sul(db):
     assert first[0]["type"] == "analysis"
 
     second = _talk(lead.id, "É pra comprar. Somos um casal com 2 filhos e podemos pagar até 1,2 milhão")
-    events = _talk(lead.id, "Me chamo Ricardo, precisamos mudar em 3 semanas, vamos financiar")
+    third = _talk(lead.id, "Me chamo Ricardo, precisamos mudar em 3 semanas, vamos financiar")
+    # quartos não são deduzidos de "2 filhos": o cliente informa quando a Laris pergunta
+    events = _talk(lead.id, "Precisamos de 3 quartos")
 
-    tools = [e for e in first + second + events if e["type"] == "tool" and e["status"] == "start"]
+    tools = [e for e in first + second + third + events if e["type"] == "tool" and e["status"] == "start"]
     assert any(t["name"] == "buscar_imoveis" for t in tools), "deveria buscar imóveis ao longo da conversa"
 
     final = events[-1]["lead"]
@@ -44,7 +46,7 @@ def test_exemplo_1_compra_zona_sul(db):
     assert final["intent"] == "compra"
     assert "zona sul" in [r.lower() for r in final["regions"]]
     assert final["budget_max"] == 1_200_000
-    assert final["bedrooms"] and final["bedrooms"] >= 2
+    assert final["bedrooms"] == 3
     assert final["urgency"] == "alta"
     assert final["temperature"] == Temperature.QUENTE
 
@@ -97,3 +99,40 @@ def test_exemplo_3_follow_up_com_contexto(db):
     assert text and "bruno" in text.lower()
     events = _talk(lead.id, "Oi, voltei! O que você tinha me perguntado mesmo?")
     assert events[-1]["reply"]
+
+
+def test_conversa_rodrigo_regressao(db):
+    """Conversa real que expôs problemas: finalidade presumida, telefone nunca pedido e cards a mais."""
+    lead = _new_lead(db)
+
+    def searched(events):
+        return [e for e in events if e["type"] == "tool" and e["name"] == "buscar_imoveis" and e["status"] == "done"]
+
+    first = _talk(lead.id, "Oi, boa tarde, procuro um apartamento próximo ao metro, sou solteiro. "
+                           "Não tenho preferência pela região.")  # fmt: skip
+    second = _talk(lead.id, "Meu nome é Rodrigo, e a faixa de preço é até 2 mil reais")
+    # sem dizer se é compra ou aluguel: não pode presumir pelo valor, precisa perguntar
+    assert second[-1]["lead"]["intent"] == "indefinido"
+    assert not searched(first + second), "não deveria buscar antes de saber a finalidade"
+    assert any(w in second[-1]["reply"].lower() for w in ("compr", "alug")), second[-1]["reply"]
+
+    third = _talk(lead.id, "É para alugar")
+    final = third[-1]
+    assert searched(third)
+    assert final["property_ids"], "studios cabem em R$ 2 mil e devem aparecer como apartamento"
+    assert all(code in final["reply"].upper() for code in final["property_ids"])  # cards = imóveis citados
+    assert len(final["property_ids"]) <= 3
+    profile = final["lead"]
+    assert profile["intent"] == "aluguel" and profile["budget_max"] == 2000
+    assert not profile["budget_min"], "'até 2 mil' não tem mínimo"
+    assert [r.lower() for r in profile["regions"]] in ([], ["sem preferência"]), profile["regions"]
+
+    events = _talk(lead.id, "Gostei da primeira opção, quero visitar na próxima terça à tarde")
+    replies = events[-1]["reply"].lower()
+    if not any(e["type"] == "appointment" for e in events):
+        events = _talk(lead.id, "Pode ser o primeiro horário. Meu WhatsApp é 11 98888-7777")
+        replies += " " + events[-1]["reply"].lower()
+    else:
+        events = _talk(lead.id, "Meu WhatsApp é 11 98888-7777")
+    assert any(w in replies for w in ("whatsapp", "telefone", "contato")), "deveria pedir o telefone ao agendar"
+    assert events[-1]["lead"]["phone"] == "+55 11 98888-7777"

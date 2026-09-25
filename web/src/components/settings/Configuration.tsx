@@ -1,12 +1,21 @@
 "use client";
 
-import { AlertTriangle, Check, DatabaseZap, Moon, Play, Send } from "lucide-react";
+import { AlertTriangle, Check, DatabaseZap, ExternalLink, FlaskConical, Mail, Moon, Play, Send } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { CHAT_STORAGE_KEY } from "@/components/chat/ChatApp";
 import { Card } from "@/components/ui";
-import { apiGet, apiPost, apiPut, type DemoResetResult, type FollowupConfig, type Metrics } from "@/lib/api";
+import {
+  apiGet,
+  apiPost,
+  apiPut,
+  type DemoResetResult,
+  type EmailConfig,
+  type EmailConfigOut,
+  type FollowupConfig,
+  type Metrics,
+} from "@/lib/api";
 
 type Feedback = { tone: "ok" | "error"; text: string } | null;
 
@@ -292,6 +301,204 @@ function FollowupSettings() {
   );
 }
 
+const MAILPIT_URL = "http://localhost:8025";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function EmailSettings() {
+  const [saved, setSaved] = useState<EmailConfigOut | null>(null);
+  const [recipient, setRecipient] = useState("");
+  const [busy, setBusy] = useState<"toggle" | "save" | "test" | null>(null);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const first = window.setTimeout(async () => {
+      try {
+        const config = await apiGet<EmailConfigOut>("/config/email");
+        setSaved(config);
+        setRecipient(config.demo_recipient);
+      } catch {
+        setFailed(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(first);
+  }, []);
+
+  async function persist(next: EmailConfig, kind: "toggle" | "save", message: string) {
+    setBusy(kind);
+    setFeedback(null);
+    try {
+      const result = await apiPut<EmailConfigOut>("/config/email", next);
+      setSaved(result);
+      setRecipient(result.demo_recipient);
+      setFeedback({ tone: "ok", text: message });
+    } catch {
+      setFeedback({ tone: "error", text: "Não foi possível salvar. Confira o e-mail informado." });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function sendTest() {
+    setBusy("test");
+    setFeedback(null);
+    try {
+      const { enviado_para } = await apiPost<{ enviado_para: string }>("/config/email/test");
+      setFeedback({ tone: "ok", text: `E-mail de teste enviado para ${enviado_para}.` });
+    } catch {
+      setFeedback({ tone: "error", text: "Falha no envio de teste. Confira as variáveis SMTP no .env e os logs da API." });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (failed && !saved) {
+    return (
+      <Card title="E-mail aos corretores">
+        <p className="text-sm text-danger">Não consegui carregar a configuração. A API está rodando?</p>
+      </Card>
+    );
+  }
+  if (!saved) {
+    return (
+      <Card title="E-mail aos corretores">
+        <div className="h-40 animate-pulse rounded-lg bg-surface-2" />
+      </Card>
+    );
+  }
+
+  const config: EmailConfig = { enabled: saved.enabled, demo_mode: saved.demo_mode, demo_recipient: saved.demo_recipient };
+  const recipientDirty = recipient.trim() !== saved.demo_recipient;
+  const recipientValid = EMAIL_RE.test(recipient.trim());
+  const smtp = saved.smtp;
+
+  return (
+    <Card title="E-mail aos corretores">
+      <div className="flex items-start justify-between gap-4 rounded-lg bg-surface-2 p-3">
+        <div>
+          <p className="text-sm font-medium text-ink">Enviar o resumo ao corretor</p>
+          <p className="mt-0.5 text-sm text-ink-2">
+            {saved.enabled ? (
+              <>
+                <span className="font-medium text-good">Ativo.</span> Ao agendar ou encaminhar um lead, o corretor recebe o
+                briefing com o convite de calendário.
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-warm">Pausado.</span> Nenhum e-mail automático. O envio manual pelo
+                detalhe do lead continua disponível.
+              </>
+            )}
+          </p>
+        </div>
+        <Switch
+          checked={saved.enabled}
+          label="Enviar o resumo ao corretor"
+          disabled={busy !== null}
+          onChange={(enabled) =>
+            persist({ ...config, enabled }, "toggle", enabled ? "Envio de e-mails ligado." : "Envio de e-mails pausado.")
+          }
+        />
+      </div>
+
+      <div className="mt-4 rounded-lg border border-line p-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-1.5 text-sm font-medium text-ink">
+              <FlaskConical className="size-4 text-muted" aria-hidden /> Modo demonstração
+            </p>
+            <p className="mt-0.5 text-sm text-ink-2">
+              {saved.demo_mode
+                ? "Todos os e-mails vão para a caixa abaixo; o corretor de destino aparece no assunto."
+                : "Cada e-mail vai para o endereço do corretor. Endereços fictícios (.example) não recebem envio."}
+            </p>
+          </div>
+          <Switch
+            checked={saved.demo_mode}
+            label="Modo demonstração"
+            disabled={busy !== null}
+            onChange={(demo_mode) =>
+              persist(
+                { ...config, demo_mode },
+                "toggle",
+                demo_mode ? "Modo demonstração ligado." : "Modo demonstração desligado: envio aos corretores.",
+              )
+            }
+          />
+        </div>
+        <form
+          className="mt-3 flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (recipientDirty && recipientValid)
+              persist({ ...config, demo_recipient: recipient.trim() }, "save", "Caixa de demonstração atualizada.");
+          }}
+        >
+          <div className="min-w-56 flex-1">
+            <Field label="Caixa de demonstração" htmlFor="email-demo">
+              <input
+                id="email-demo"
+                type="email"
+                value={recipient}
+                onChange={(e) => setRecipient(e.target.value)}
+                className={inputClass}
+                autoComplete="email"
+              />
+            </Field>
+          </div>
+          {recipientDirty && (
+            <button
+              type="submit"
+              disabled={!recipientValid || busy !== null}
+              className={`${buttonClass} bg-brand text-white hover:opacity-90`}
+            >
+              {busy === "save" ? "Salvando…" : "Salvar"}
+            </button>
+          )}
+        </form>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-4">
+        <div className="w-full min-w-0 text-sm text-ink-2 sm:w-auto sm:flex-1">
+          <p className="flex items-center gap-1.5">
+            <Mail className="size-4 shrink-0 text-muted" aria-hidden />
+            <span className="break-all">
+              {smtp.host}:{smtp.port} · {smtp.security}
+              {smtp.authenticated ? " · autenticado" : ""}
+            </span>
+          </p>
+          <p className="mt-0.5 break-all text-xs text-muted">Remetente: {smtp.sender}</p>
+          {smtp.local_test_inbox && (
+            <p className="mt-0.5 text-xs text-muted">
+              Caixa de teste local: os e-mails não saem de verdade.{" "}
+              <a
+                href={MAILPIT_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-0.5 font-medium text-brand underline-offset-2 hover:underline"
+              >
+                Abrir o Mailpit <ExternalLink className="size-3" aria-hidden />
+              </a>
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={sendTest}
+          disabled={busy !== null}
+          className={`${buttonClass} border border-line text-ink hover:bg-surface-2`}
+        >
+          <Send className={`size-4 ${busy === "test" ? "animate-pulse" : ""}`} aria-hidden />
+          {busy === "test" ? "Enviando…" : "Enviar e-mail de teste"}
+        </button>
+      </div>
+      <div className="mt-2">
+        <FeedbackLine feedback={feedback} />
+      </div>
+    </Card>
+  );
+}
+
 function DemoReset() {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -323,7 +530,7 @@ function DemoReset() {
       </p>
       <ul className="mt-2 list-disc space-y-0.5 pl-5 text-sm text-ink-2">
         <li>
-          <strong className="font-medium text-ink">Apaga</strong> todos os leads, conversas, resumos, agendamentos e a
+          <strong className="font-medium text-ink">Apaga</strong> todos os leads, conversas, resumos, agendamentos, e-mails enviados e a
           memória dos agentes.
         </li>
         <li>
@@ -386,6 +593,7 @@ export function Configuration() {
         <p className="text-sm text-ink-2">Ajustes que valem na hora, sem reiniciar a API. O .env define só os valores iniciais.</p>
       </div>
       <FollowupSettings />
+      <EmailSettings />
       <DemoReset />
     </div>
   );

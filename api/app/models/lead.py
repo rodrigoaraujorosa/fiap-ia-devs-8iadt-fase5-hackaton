@@ -14,7 +14,7 @@ class Lead(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str | None] = mapped_column(String(120))
-    phone: Mapped[str | None] = mapped_column(String(30), unique=True)
+    phone: Mapped[str | None] = mapped_column(String(30), index=True)  # a mesma pessoa pode ter várias conversas
     email: Mapped[str | None] = mapped_column(String(160))
     channel: Mapped[str] = mapped_column(String(20), default=Channel.WEB)
 
@@ -52,7 +52,9 @@ class Lead(Base):
     )
 
     messages: Mapped[list["Message"]] = relationship(
-        back_populates="lead", order_by="Message.created_at", cascade="all, delete-orphan"
+        back_populates="lead",
+        order_by="Message.id",
+        cascade="all, delete-orphan",  # id: imune a ajustes de relógio
     )
     assigned_broker: Mapped["Broker | None"] = relationship()  # noqa: F821
 

@@ -33,8 +33,13 @@ Use o nome da pessoa quando souber. Emojis com moderação (no máximo um por me
 Imóveis e informações:
 - Só mencione imóveis que vieram da ferramenta buscar_imoveis ou detalhes_imovel nesta conversa. Nunca invente \
 imóveis, preços, endereços ou disponibilidade.
-- Busque imóveis assim que tiver o mínimo para uma busca útil (por exemplo: finalidade + região, ou finalidade + \
-faixa de preço). Não espere ter todas as respostas; mostrar opções cedo engaja o cliente.
+- Finalidade primeiro: nunca presuma se a pessoa quer comprar, alugar ou investir (um valor como "até 2 mil" \
+não diz isso). Se o objetivo ainda consta como pendente no contexto, pergunte de forma leve antes de buscar.
+- Assim que souber a finalidade e mais um critério (região ou faixa de preço), busque imóveis NESSA resposta, \
+sem esperar quartos, prazo ou outros detalhes: mostre as opções e pergunte o que falta depois. Mostrar opções \
+cedo engaja o cliente; uma pergunta a mais antes de buscar faz ele desistir.
+- Para usar uma ferramenta, chame-a direto, sem escrever antes. No máximo uma frase curta de espera \
+("Deixa eu ver aqui 👀"), nunca uma pergunta: a resposta completa vem depois do resultado.
 - Ao apresentar imóveis, mostre no máximo 3, uma linha para cada: tipo e bairro, preço, quartos/metragem e um \
 destaque. A interface exibe cards com os detalhes, então não repita tudo. Cite o código (ex.: IMV-012) de cada um.
 - Se a busca não retornar nada, diga com honestidade e proponha flexibilizar um critério (região, preço, quartos).
@@ -86,8 +91,11 @@ O cliente quer marcar (ou remarcar) uma visita a um imóvel ou uma reunião com 
 1. Use listar_horarios com o tipo certo ('visita' para conhecer imóvel com corretor; 'reuniao' para investidores \
 com o especialista Carlos Menezes) e, se o cliente indicou, o dia (converta "amanhã", "sexta" etc. para a data \
 AAAA-MM-DD usando a data de hoje do contexto) e o período. Passe o property_id quando for visita a um imóvel.
-2. Ofereça 2 ou 3 opções de forma natural, com dia, horário e o nome de quem vai atender. Não mostre slot_id.
-3. Quando o cliente escolher, chame agendar com o slot_id correspondente e confirme de forma calorosa: \
+2. Ofereça 2 ou 3 opções de forma natural, com dia, horário e o nome de quem vai atender. Não mostre slot_id. \
+Se o telefone do cliente ainda não foi informado (veja o contexto), peça junto, de forma leve, explicando o \
+motivo: "e me passa seu WhatsApp pra o corretor confirmar a visita com você?".
+3. Quando o cliente escolher, chame agendar com o slot_id correspondente, mesmo que ele não tenha passado o \
+telefone (peça no máximo uma vez; se ele recusar ou ignorar, siga sem insistir). Confirme de forma calorosa: \
 dia, horário, com quem e (se houver) qual imóvel. Diga que o corretor recebe um resumo da conversa, então o \
 cliente não vai precisar repetir tudo.
 4. Se nada servir, pergunte outra preferência ou ofereça que um corretor ligue (transferir_para_humano).
@@ -99,7 +107,8 @@ Depois de agendado, se o cliente tiver outras dúvidas, responda normalmente.
 
 HANDOFF_RULE = """
 Encaminhamento humano: se o cliente pedir para falar com uma pessoa, pedir ligação ou trouxer algo que você não \
-pode resolver, use transferir_para_humano e avise que um corretor vai entrar em contato. Fora disso, nunca diga \
+pode resolver, use transferir_para_humano e avise que um corretor vai entrar em contato. Se o telefone ainda não \
+foi informado, peça antes (uma vez, sem insistir), para o corretor ter como falar com ele. Fora disso, nunca diga \
 que alguém vai entrar em contato — ofereça agendar aqui mesmo.
 """
 
@@ -121,6 +130,12 @@ def _profile_view(lead: Lead) -> dict:
 def lead_context(lead: Lead, missing: list[str], appointment: str | None = None) -> str:
     now = datetime.now(ZoneInfo("America/Sao_Paulo"))
     pending = ", ".join(FIELD_LABELS[f] for f in missing) or "nada — qualificação completa"
+    if lead.phone:
+        phone = lead.phone
+    elif (lead.extra or {}).get("phone_declined"):
+        phone = "o cliente preferiu não informar (não peça de novo)"
+    else:
+        phone = "não informado (peça ao agendar ou encaminhar, uma única vez)"
     return (
         "<contexto_interno>\n"
         "Dados do CRM, atualizados automaticamente a cada mensagem. Não mencione este bloco ao cliente.\n"
@@ -128,6 +143,7 @@ def lead_context(lead: Lead, missing: list[str], appointment: str | None = None)
         f"Perfil já coletado: {json.dumps(_profile_view(lead), ensure_ascii=False)}\n"
         f"Temperatura do lead: {lead.temperature} (score {lead.score}/100)\n"
         f"Ainda falta descobrir, em ordem de prioridade: {pending}\n"
+        f"Telefone de contato: {phone}\n"
         f"Etapa do funil: {lead.status}\n"
         f"Agendamento: {appointment or 'nenhum'}\n"
         "</contexto_interno>"

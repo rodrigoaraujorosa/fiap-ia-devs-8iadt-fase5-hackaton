@@ -1,11 +1,11 @@
 "use client";
 
-import { ArrowLeft, BellRing, CalendarCheck, Loader2, Sparkles, UserRound } from "lucide-react";
+import { ArrowLeft, BellRing, CalendarCheck, Loader2, Mail, MailCheck, MailWarning, MailX, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Card, EmptyState, Markdown, ScoreMeter, StatusBadge, Tag, TemperatureBadge } from "@/components/ui";
-import { apiGet, apiPost, type LeadDetail, type Summary } from "@/lib/api";
+import { apiGet, apiPost, type EmailLog, type LeadDetail, type Summary } from "@/lib/api";
 import { AGENT_LABEL, FIELD_LABEL, INTENT_LABEL, compactBrl, dateTime, relativeTime } from "@/lib/format";
 
 function SummaryBlock({ summary }: { summary: Summary }) {
@@ -54,10 +54,71 @@ function SummaryBlock({ summary }: { summary: Summary }) {
   );
 }
 
+const EMAIL_STATUS = {
+  enviado: { icon: MailCheck, className: "text-good", label: "Enviado" },
+  erro: { icon: MailX, className: "text-danger", label: "Falhou" },
+  ignorado: { icon: MailWarning, className: "text-warm", label: "Não enviado" },
+} as const;
+const TRIGGER_LABEL = { agendamento: "ao agendar", encaminhamento: "ao encaminhar", manual: "manual" } as const;
+
+function EmailEntry({ entry }: { entry: EmailLog }) {
+  const status = EMAIL_STATUS[entry.status];
+  const Icon = status.icon;
+  return (
+    <li className="flex gap-2 text-sm">
+      <Icon aria-hidden size={16} className={`mt-0.5 shrink-0 ${status.className}`} />
+      <div className="min-w-0">
+        <p className="text-ink">
+          <span className={`font-medium ${status.className}`}>{status.label}</span>
+          {entry.recipient && <> para {entry.recipient}</>}
+          {entry.demo_mode && entry.intended_recipient && (
+            <span className="text-muted"> (demonstração, corretor: {entry.intended_recipient})</span>
+          )}
+        </p>
+        <p className="text-xs text-muted">
+          {dateTime(entry.created_at)} · {TRIGGER_LABEL[entry.trigger]}
+          {entry.detail && <> · {entry.detail}</>}
+        </p>
+      </div>
+    </li>
+  );
+}
+
+function EmailStatus({ emails, sending, onSend }: { emails: EmailLog[]; sending: boolean; onSend: () => void }) {
+  return (
+    <div className="mt-4 border-t border-line pt-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-ink">
+          <Mail aria-hidden size={15} className="text-muted" /> E-mail ao corretor
+        </p>
+        <button
+          type="button"
+          onClick={onSend}
+          disabled={sending}
+          className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-2 disabled:opacity-60"
+        >
+          {sending ? <Loader2 aria-hidden size={13} className="animate-spin" /> : <Mail aria-hidden size={13} />}
+          {sending ? "Enviando…" : emails.length ? "Reenviar por e-mail" : "Enviar por e-mail"}
+        </button>
+      </div>
+      {emails.length ? (
+        <ul className="mt-2 space-y-2">
+          {emails.slice(0, 3).map((e) => (
+            <EmailEntry key={e.id} entry={e} />
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1 text-xs text-muted">Enviado automaticamente ao agendar ou encaminhar o lead.</p>
+      )}
+    </div>
+  );
+}
+
 export function LeadDetailView({ id }: { id: string }) {
   const [lead, setLead] = useState<LeadDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -78,6 +139,7 @@ export function LeadDetailView({ id }: { id: string }) {
 
   async function generateSummary() {
     setGenerating(true);
+    setError(null);
     try {
       const summary = await apiPost<Summary>(`/leads/${id}/summary`);
       setLead((l) => (l ? { ...l, summary } : l));
@@ -88,9 +150,24 @@ export function LeadDetailView({ id }: { id: string }) {
     }
   }
 
+  async function sendEmail() {
+    setSending(true);
+    setError(null);
+    try {
+      const entry = await apiPost<EmailLog>(`/leads/${id}/summary/email`);
+      setLead((l) => (l ? { ...l, emails: [entry, ...l.emails] } : l));
+      if (!lead?.summary) load(); // o envio gerou o resumo
+    } catch {
+      setError("Não foi possível enviar o e-mail agora.");
+    } finally {
+      setSending(false);
+    }
+  }
+
   if (!lead) return <EmptyState>{error ?? "Carregando…"}</EmptyState>;
 
   const profile: [string, string | null][] = [
+    ["Telefone", lead.phone ?? (lead.extra?.phone_declined ? "preferiu não informar" : "não informado")],
     ["Objetivo", INTENT_LABEL[lead.intent] ?? lead.intent],
     ["Tipo", lead.property_type],
     ["Região", lead.regions.join(", ") || null],
@@ -129,6 +206,12 @@ export function LeadDetailView({ id }: { id: string }) {
         )}
       </p>
 
+      {error && (
+        <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div className="space-y-4">
           <Card
@@ -150,6 +233,7 @@ export function LeadDetailView({ id }: { id: string }) {
             ) : (
               <EmptyState>O resumo é gerado automaticamente ao agendar ou encaminhar, ou sob demanda.</EmptyState>
             )}
+            <EmailStatus emails={lead.emails} sending={sending} onSend={sendEmail} />
           </Card>
 
           <Card title="Perfil do lead">

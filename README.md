@@ -45,9 +45,9 @@ flowchart LR
     J[[Job de follow-up<br/>APScheduler]] -->|lead sem resposta| F[Mensagem contextual<br/>cadência 2N, 4N...]
 ```
 
-- **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada (intenção, orçamento, região, quartos, urgência, perfil investidor...). Regras determinísticas calculam campos faltantes, score (0-100), temperatura e etapa do funil, e escolhem o agente que responde.
+- **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada (intenção, orçamento, região, quartos, urgência, perfil investidor...). Regras determinísticas calculam campos faltantes, score (0-100), temperatura e etapa do funil, e escolhem o agente que responde. O perfil registra só o que o cliente disse: a finalidade (compra, aluguel ou investimento) exige um trecho citado literalmente da mensagem do cliente, conferido pelo código, e a busca de imóveis fica travada até ela ser declarada. O telefone é pedido ao agendar ou encaminhar, uma única vez.
 - **Agentes (Sonnet):** persona humanizada ("Laris"), uma pergunta por vez, guiada pela lista de campos faltantes. *Compra e Aluguel* e *Investimentos* qualificam e sugerem imóveis; *Agendamento* consulta a agenda do corretor certo (por zona, ou o especialista em investimentos) e confirma visitas e reuniões.
-- **Resumo inteligente:** ao agendar ou encaminhar, o corretor recebe um briefing estruturado (perfil, necessidades, imóveis de interesse, objeções, próximos passos, abordagem sugerida).
+- **Resumo inteligente:** ao agendar ou encaminhar, o corretor recebe um briefing estruturado (perfil, necessidades, imóveis de interesse, objeções, próximos passos, abordagem sugerida) **por e-mail**, com o convite de calendário (.ics) da visita anexado. No modo demonstração, todos os e-mails vão para uma única caixa, com o corretor de destino no assunto.
 - **Follow-up automático:** um job reserva leads sem resposta (`FOR UPDATE SKIP LOCKED`, seguro com várias instâncias) e envia mensagens com o contexto da conversa. Cada tentativa usa uma estratégia (retomar, agregar valor, encerrar), com cadência crescente; depois da última, o lead vai para *perdido*. Se ele voltar, a conversa continua de onde parou. O envio pode ser pausado, ter a cadência ajustada ou um horário de silêncio definido em tempo real na tela de configurações.
 - **Memória:** o histórico completo (inclusive ferramentas e follow-ups) é o estado do grafo LangGraph, persistido no Postgres pelo checkpointer. A conversa continua mesmo após reiniciar a API.
 - **Observabilidade:** com as chaves do Langfuse no `.env`, cada turno vira um trace agrupado por conversa, com os nós do grafo, cada chamada ao Claude (tokens, cache, latência) e cada ferramenta.
@@ -62,9 +62,12 @@ flowchart LR
 | `GET` | `/leads` | Leads com score, temperatura e etapa do funil (filtros: `status`, `temperature`, `intent`) |
 | `GET` | `/leads/{lead_id}` | Detalhe do lead: perfil, resumo, agendamentos e conversa |
 | `POST` | `/leads/{lead_id}/summary` | Gera ou atualiza o resumo para o corretor |
+| `POST` | `/leads/{lead_id}/summary/email` | Envia o resumo ao corretor por e-mail agora |
 | `GET` | `/appointments` | Próximos agendamentos |
 | `GET` | `/dashboard/metrics` | KPIs: funil, temperatura, intenção, agendamentos e follow-ups |
 | `GET` / `PUT` | `/config/followup` | Lê/altera o follow-up em tempo real (liga/desliga, minutos, tentativas, horário de silêncio) |
+| `GET` / `PUT` | `/config/email` | Lê/altera o envio de e-mails (liga/desliga, modo demonstração, caixa de demonstração) |
+| `POST` | `/config/email/test` | Envia um e-mail de teste para validar o SMTP |
 | `POST` | `/followups/run` | Dispara o ciclo de follow-up na hora, mesmo pausado (útil na demo) |
 | `POST` | `/admin/demo/reset` | Apaga leads/conversas/agenda e recria os dados de demonstração |
 
@@ -74,8 +77,8 @@ flowchart LR
 |---|---|
 | 💬 **Chat do lead** (`/chat`) | Conversa no estilo WhatsApp com a Laris: resposta em streaming, indicador do que a IA está fazendo ("consultando imóveis…"), cards dos imóveis sugeridos, confirmação de agendamento e follow-ups que chegam sozinhos. Ao lado, o painel **"O que a IA está entendendo"** mostra em tempo real o agente ativo, score, temperatura, perfil extraído e as próximas perguntas da qualificação. |
 | 📊 **Dashboard do corretor** (`/dashboard`) | Indicadores (leads, taxa de qualificação, quentes, agendamentos, follow-ups), funil por etapa, intenção dos leads, próximos agendamentos e tabela de leads com filtros. Atualiza sozinho a cada 10s. |
-| 🗂️ **Detalhe do lead** (`/dashboard/leads/{id}`) | Resumo inteligente para o corretor (gerar/atualizar), perfil, agendamentos e a conversa completa, com o agente que respondeu cada mensagem e os follow-ups marcados. |
-| ⚙️ **Configurações** (`/configuration`) | Liga/desliga do follow-up com efeito imediato, minutos até a 1ª tentativa, máximo de tentativas, horário de silêncio e botão "rodar agora". Também reseta os dados de demonstração (8 leads em todas as etapas do funil, com conversas, resumos e agendamentos). |
+| 🗂️ **Detalhe do lead** (`/dashboard/leads/{id}`) | Resumo inteligente para o corretor (gerar/atualizar), status e histórico do e-mail ao corretor (com reenvio), perfil, agendamentos e a conversa completa, com o agente que respondeu cada mensagem e os follow-ups marcados. |
+| ⚙️ **Configurações** (`/configuration`) | Liga/desliga do follow-up com efeito imediato, minutos até a 1ª tentativa, máximo de tentativas, horário de silêncio e botão "rodar agora". Controla o e-mail aos corretores (liga/desliga, modo demonstração, e-mail de teste). Também reseta os dados de demonstração (8 leads em todas as etapas do funil, com conversas, resumos e agendamentos). |
 
 A conversa fica salva no navegador (o lead é retomado ao recarregar); use **Nova conversa** para simular outro lead. Os atalhos iniciais do chat reproduzem os três cenários do enunciado.
 
@@ -102,6 +105,7 @@ docker compose exec api python -m scripts.seed --demo   # --demo: cria também o
 |---|---|
 | 🖥️ Web | http://localhost:3001 |
 | ⚙️ API (Swagger) | http://localhost:8001/docs |
+| 📬 Mailpit (e-mails de teste) | http://localhost:8025 |
 
 > ℹ️ As portas 3000/8000 costumam estar ocupadas no Windows, por isso o padrão é 3001/8001 (configurável no `.env`).
 

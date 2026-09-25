@@ -16,6 +16,17 @@ from app.models import Property
 from app.schemas.property import PropertySearchParams, PropertySearchResult
 
 RRF_K = 60  # constante padrão do RRF
+# Tipos equivalentes na linguagem do cliente: quem pede "apartamento" também aceita studio e cobertura
+TYPE_SYNONYMS = {
+    "apartamento": ["apartamento", "studio", "cobertura"],
+    "ape": ["apartamento", "studio", "cobertura"],
+    "kitnet": ["studio"],
+    "kitnete": ["studio"],
+    "quitinete": ["studio"],
+    "estudio": ["studio"],
+    "loft": ["studio"],
+    "sala": ["sala comercial"],
+}
 MAX_CANDIDATES = 200
 
 
@@ -52,7 +63,8 @@ def _apply_filters(stmt, params: PropertySearchParams):
     if params.purpose:
         stmt = stmt.where(Property.purpose == _normalize(params.purpose))
     if params.property_type:
-        stmt = stmt.where(_unaccent_lower(Property.property_type) == _normalize(params.property_type))
+        wanted = _normalize(params.property_type)
+        stmt = stmt.where(_unaccent_lower(Property.property_type).in_(TYPE_SYNONYMS.get(wanted, [wanted])))
     if params.zones:
         stmt = stmt.where(_unaccent_lower(Property.zone).in_([_normalize(z) for z in params.zones]))
     if params.neighborhoods:

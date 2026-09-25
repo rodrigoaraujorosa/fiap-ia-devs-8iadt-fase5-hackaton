@@ -11,6 +11,7 @@ function profileRows(lead: Lead): [string, string][] {
   const money = (v: number | null) => (v ? compactBrl(v) : null);
   const rows: [string, string | null][] = [
     ["Nome", lead.name],
+    ["Telefone", lead.phone ?? (lead.extra?.phone_declined ? "preferiu não informar" : null)],
     ["Objetivo", INTENT_LABEL[lead.intent] ?? lead.intent],
     ["Tipo", lead.property_type],
     ["Região", lead.regions.length ? lead.regions.join(", ") : null],

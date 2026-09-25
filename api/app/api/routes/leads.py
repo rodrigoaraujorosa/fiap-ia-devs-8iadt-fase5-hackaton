@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.agents.qualification import missing_fields
 from app.db.session import get_db
-from app.models import Appointment, Lead, Message, Slot, Summary
-from app.schemas.crm import AppointmentOut, LeadDetail, SummaryOut
+from app.models import Appointment, EmailLog, Lead, Message, Slot, Summary
+from app.schemas.crm import AppointmentOut, EmailLogOut, LeadDetail, SummaryOut
 from app.schemas.lead import LeadOut
+from app.services.mailer import send_summary_email
 from app.services.summary import generate_summary
 
 router = APIRouter(tags=["crm"])
@@ -49,7 +50,8 @@ def get_lead(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     appts = db.scalars(
         select(Appointment).join(Slot).where(Appointment.lead_id == lead_id).order_by(Slot.start_at)
     ).all()
-    messages = db.scalars(select(Message).where(Message.lead_id == lead_id).order_by(Message.created_at)).all()
+    messages = db.scalars(select(Message).where(Message.lead_id == lead_id).order_by(Message.id)).all()
+    emails = db.scalars(select(EmailLog).where(EmailLog.lead_id == lead_id).order_by(EmailLog.created_at.desc())).all()
     return LeadDetail.model_validate(
         {
             **LeadOut.model_validate(lead).model_dump(),
@@ -58,6 +60,7 @@ def get_lead(lead_id: uuid.UUID, db: Session = Depends(get_db)):
             "appointments": [appointment_out(a, lead.name) for a in appts],
             "messages": messages,
             "missing": missing_fields(lead),
+            "emails": emails,
         }
     )
 
@@ -71,6 +74,20 @@ def create_summary(lead_id: uuid.UUID, db: Session = Depends(get_db)):
         return generate_summary(db, lead_id)
     except (anthropic.APIError, RuntimeError) as exc:
         raise HTTPException(502, "Não foi possível gerar o resumo agora") from exc
+
+
+@router.post("/leads/{lead_id}/summary/email", response_model=EmailLogOut)
+def email_summary(lead_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Envia o resumo ao corretor por e-mail agora (gera o resumo antes, se ainda não existir)."""
+    if not db.get(Lead, lead_id):
+        raise HTTPException(404, "Lead não encontrado")
+    summary = db.scalar(select(Summary).where(Summary.lead_id == lead_id).order_by(Summary.created_at.desc()))
+    if summary is None:
+        try:
+            summary = generate_summary(db, lead_id)
+        except (anthropic.APIError, RuntimeError) as exc:
+            raise HTTPException(502, "Não foi possível gerar o resumo agora") from exc
+    return send_summary_email(db, lead_id, "manual", summary)
 
 
 @router.get("/appointments", response_model=list[AppointmentOut])

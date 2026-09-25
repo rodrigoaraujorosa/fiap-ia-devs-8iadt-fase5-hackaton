@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, EmailStr, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -39,29 +39,56 @@ class FollowupConfig(BaseModel):
         return now_t >= start or now_t < end  # janela que atravessa a meia-noite (ex.: 21:00 → 08:00)
 
 
+class EmailConfig(BaseModel):
+    enabled: bool = Field(description="Envia o resumo ao corretor ao agendar ou encaminhar um lead")
+    demo_mode: bool = Field(description="Entrega todos os e-mails na caixa de demonstração")
+    demo_recipient: EmailStr = Field(description="Caixa que recebe os e-mails no modo demonstração")
+
+
 def followup_defaults() -> FollowupConfig:
     s = get_settings()
     return FollowupConfig(enabled=s.followup_enabled, minutes=s.followup_minutes, max_attempts=s.followup_max_attempts)
 
 
-def get_followup_config(db: Session | None = None) -> FollowupConfig:
+def email_defaults() -> EmailConfig:
+    s = get_settings()
+    return EmailConfig(enabled=s.email_enabled, demo_mode=s.email_demo_mode, demo_recipient=s.email_demo_recipient)
+
+
+def _load[T: BaseModel](db: Session | None, key: str, defaults: T) -> T:
     if db is None:
         with SessionLocal() as session:
-            return get_followup_config(session)
-    row = db.get(AppSetting, "followup")
+            return _load(session, key, defaults)
+    row = db.get(AppSetting, key)
     if row is None:
-        return followup_defaults()
+        return defaults
     try:
-        return FollowupConfig.model_validate({**followup_defaults().model_dump(), **row.value})
+        return type(defaults).model_validate({**defaults.model_dump(), **row.value})
     except ValidationError:
-        log.warning("Configuração de follow-up inválida no banco; usando os padrões do .env")
-        return followup_defaults()
+        log.warning("Configuração %r inválida no banco; usando os padrões do .env", key)
+        return defaults
 
 
-def save_followup_config(db: Session, config: FollowupConfig) -> FollowupConfig:
-    row = db.get(AppSetting, "followup") or AppSetting(key="followup")
+def _save[T: BaseModel](db: Session, key: str, config: T) -> T:
+    row = db.get(AppSetting, key) or AppSetting(key=key)
     row.value = config.model_dump()
     db.add(row)
     db.commit()
-    log.info("Configuração de follow-up atualizada: %s", row.value)
+    log.info("Configuração %r atualizada: %s", key, row.value)
     return config
+
+
+def get_followup_config(db: Session | None = None) -> FollowupConfig:
+    return _load(db, "followup", followup_defaults())
+
+
+def save_followup_config(db: Session, config: FollowupConfig) -> FollowupConfig:
+    return _save(db, "followup", config)
+
+
+def get_email_config(db: Session | None = None) -> EmailConfig:
+    return _load(db, "email", email_defaults())
+
+
+def save_email_config(db: Session, config: EmailConfig) -> EmailConfig:
+    return _save(db, "email", config)

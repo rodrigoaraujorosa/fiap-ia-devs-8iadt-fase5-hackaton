@@ -36,14 +36,14 @@ def run_turn(lead_id: uuid.UUID, text: str) -> Iterator[dict]:
         lead.next_followup_at = None
         db.commit()
 
-    reply, agent, property_ids, notices = "", None, [], {}
+    reply, bubbles, agent, property_ids, notices = "", [], None, [], {}
     graph_input = {"lead_id": str(lead_id), "messages": [{"role": "user", "content": text}]}
     config = {"configurable": {"thread_id": str(lead_id)}}
     with observability.trace("turno", session_id=str(lead_id), input=text) as root:
         try:
             for event in get_graph().stream(graph_input, config, stream_mode="custom"):
                 if event["type"] == "reply":
-                    reply, property_ids = event["text"], event["property_ids"]
+                    reply, bubbles, property_ids = event["text"], event["bubbles"], event["property_ids"]
                     continue
                 if event["type"] == "agent":
                     agent = event["agent"]
@@ -58,21 +58,33 @@ def run_turn(lead_id: uuid.UUID, text: str) -> Iterator[dict]:
     with SessionLocal() as db:
         lead = db.get(Lead, lead_id)
         if reply:
-            db.add(
-                Message(
-                    lead_id=lead_id,
-                    role=MessageRole.ASSISTANT,
-                    content=reply,
-                    agent=agent,
-                    meta={"property_ids": list(dict.fromkeys(property_ids)), **notices},
+            # um balão por mensagem (texto antes de uma ferramenta vira balão próprio); cards e avisos no último
+            sent_at = datetime.now(UTC)
+            bubbles = bubbles or [reply]
+            for i, text in enumerate(bubbles):  # inseridos em ordem: o id sequencial ordena os balões
+                last = i == len(bubbles) - 1
+                db.add(
+                    Message(
+                        lead_id=lead_id,
+                        role=MessageRole.ASSISTANT,
+                        content=text,
+                        agent=agent,
+                        meta={"property_ids": property_ids, **notices} if last else {"property_ids": []},
+                    )
                 )
-            )
-            lead.last_message_at = datetime.now(UTC)
+            lead.last_message_at = sent_at
             if lead.status in ("novo", "em_qualificacao", "qualificado"):  # agendado/encaminhado não recebem follow-up
                 lead.next_followup_at = lead.last_message_at + timedelta(minutes=get_followup_config(db).minutes)
         db.commit()
         db.refresh(lead)
-        yield {"type": "done", "reply": reply, "agent": agent, "lead": LeadOut.model_validate(lead).model_dump()}
+        yield {
+            "type": "done",
+            "reply": reply,
+            "bubbles": bubbles,
+            "property_ids": property_ids,
+            "agent": agent,
+            "lead": LeadOut.model_validate(lead).model_dump(),
+        }
 
 
 def stream_turn_sse(lead_id: uuid.UUID, text: str) -> Iterator[str]:

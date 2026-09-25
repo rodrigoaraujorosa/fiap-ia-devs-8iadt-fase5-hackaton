@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.models import Lead, Property
-from app.models.enums import LeadStatus
+from app.models.enums import Intent, LeadStatus
 from app.schemas.property import PropertyOut, PropertySearchParams
 from app.services import scheduling
 from app.services.property_search import search_properties
@@ -132,6 +132,13 @@ def _brief(p: PropertyOut) -> dict:
 
 
 def _buscar(ctx: ToolContext, raw: Any) -> ToolOutcome:
+    lead = ctx.db.get(Lead, ctx.lead_id)
+    if lead.intent in (None, Intent.INDEFINIDO):  # trava determinística: a finalidade vem do cliente, não de palpite
+        return ToolOutcome(
+            "O cliente ainda não disse se quer comprar, alugar ou investir. Pergunte isso antes de buscar imóveis "
+            "(não presuma pelo valor).",
+            is_error=True,
+        )
     results = search_properties(ctx.db, PropertySearchParams.model_validate(raw))
     if not results:
         return ToolOutcome(json.dumps({"resultados": [], "aviso": "Nenhum imóvel com esses filtros."}))
@@ -179,7 +186,7 @@ def _agendar(ctx: ToolContext, raw: Any) -> ToolOutcome:
         appt = scheduling.book(ctx.db, lead, params.slot_id, params.tipo, property_id, params.observacoes)
     except scheduling.SchedulingError as exc:
         return ToolOutcome(str(exc), is_error=True)
-    submit_summary(lead.id)
+    submit_summary(lead.id, "agendamento")
     when = scheduling.format_slot(appt.slot.start_at)
     info = {"confirmado": True, "tipo": appt.kind, "quando": when, "com": appt.broker.name,
             "imovel": appt.property_id}  # fmt: skip
@@ -190,14 +197,14 @@ def _agendar(ctx: ToolContext, raw: Any) -> ToolOutcome:
 def _transferir(ctx: ToolContext, raw: Any) -> ToolOutcome:
     params = HandoffParams.model_validate(raw)
     lead = ctx.db.get(Lead, ctx.lead_id)
-    broker = scheduling.pick_brokers(ctx.db, lead, "reuniao")[0]
+    broker = lead.assigned_broker or scheduling.pick_brokers(ctx.db, lead, "reuniao")[0]
     if lead.status != LeadStatus.AGENDADO:
         lead.status = LeadStatus.ENCAMINHADO
-    lead.assigned_broker_id = lead.assigned_broker_id or broker.id
+    lead.assigned_broker_id = broker.id
     lead.next_followup_at = None
     lead.extra = {**(lead.extra or {}), "handoff_reason": params.motivo}
     ctx.db.commit()
-    submit_summary(lead.id)
+    submit_summary(lead.id, "encaminhamento")
     info = {"encaminhado": True, "corretor": broker.name, "prazo_retorno": "em até 1 hora útil"}
     return ToolOutcome(json.dumps(info, ensure_ascii=False), event={"type": "handoff", **info})
 

@@ -42,9 +42,24 @@ class SummaryOut(BaseModel):
     created_at: datetime
 
 
+class EmailLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    trigger: str
+    status: str
+    recipient: str | None
+    intended_recipient: str | None
+    demo_mode: bool
+    subject: str
+    detail: str | None
+    created_at: datetime
+
+
 class LeadDetail(LeadOut):
     assigned_broker: BrokerOut | None = None
     summary: SummaryOut | None = None
     appointments: list[AppointmentOut] = []
     messages: list[MessageOut] = []
     missing: list[str] = []  # campos da qualificação ainda não descobertos
+    emails: list[EmailLogOut] = []  # envios do resumo ao corretor (mais recente primeiro)

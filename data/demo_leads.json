@@ -28,7 +28,7 @@
       {"role": "user", "minutes_ago": 1536, "content": "Pode ser de manhã, qualquer dia útil"},
       {"role": "assistant", "minutes_ago": 1535, "agent": "agendamento", "appointment": true, "content": "Prontinho, Ana! ✅ Visita ao **IMV-007** agendada com a Mariana Costa, nossa especialista na zona sul. Ela vai te chamar um dia antes para confirmar. Qualquer coisa, é só me chamar por aqui!"}
     ],
-    "appointment": {"broker": "mariana.costa@imobiq.example", "business_days_ahead": 2, "hour": 10, "kind": "visita", "property_id": "IMV-007", "notes": "Casal, 1º imóvel, financiamento; gostou da proximidade do metrô."},
+    "appointment": {"broker": "mariana.costa@imobiq.example", "business_days_ahead": 2, "hour": 9, "kind": "visita", "property_id": "IMV-007", "notes": "Casal, 1º imóvel, financiamento; gostou da proximidade do metrô."},
     "summary": {
       "resumo": "Ana e o marido buscam o primeiro imóvel próprio na Vila Mariana ou em Moema, com até R$ 1 milhão e financiamento. Querem se mudar em até 3 meses e valorizam estar perto do metrô.",
       "perfil": "Casal, primeiro imóvel, compra financiada, urgência alta",

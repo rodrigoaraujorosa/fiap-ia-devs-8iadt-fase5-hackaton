@@ -47,3 +47,12 @@ def test_hybrid_search_finds_landmarks(db):
 def test_hybrid_search_keeps_filters(db):
     results = search_properties(db, PropertySearchParams(query="perto da Paulista", purpose="aluguel", limit=5))
     assert results and all(r.purpose == "aluguel" for r in results)
+
+
+def test_apartment_includes_studio_and_penthouse(db):
+    """Quem pede "apartamento" aceita studio e cobertura (a conversa do Rodrigo voltava vazia por isso)."""
+    params = PropertySearchParams(purpose="aluguel", property_type="apartamento", max_price=2000, limit=10)
+    types = {r.property_type for r in search_properties(db, params)}
+    assert "studio" in types
+    kitnet = PropertySearchParams(purpose="aluguel", property_type="kitnet", limit=10)
+    assert {r.property_type for r in search_properties(db, kitnet)} == {"studio"}

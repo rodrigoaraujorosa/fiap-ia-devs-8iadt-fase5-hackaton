@@ -151,15 +151,21 @@ export function ChatApp() {
         setActivity(null);
         patchLast((m) => ({ ...m, content: m.content + event.text }));
         break;
+      case "bubble": {
+        // texto novo depois de uma ferramenta: outro balão, como no WhatsApp
+        const at = new Date().toISOString();
+        setMessages((list) => [
+          ...list.map((m, i) => (i === list.length - 1 ? { ...m, streaming: false } : m)),
+          { key: `a-${at}-${list.length}`, role: "assistant", content: "", at, streaming: true },
+        ]);
+        break;
+      }
       case "tool":
         setActivity(event.status === "start" ? (TOOL_ACTIVITY[event.name] ?? "pensando") : null);
         break;
       case "properties":
+        // só guarda: os cards exibidos são os imóveis citados na resposta final (evento "done")
         event.items.forEach((p) => propertyCache.set(p.id, p));
-        patchLast((m) => {
-          const known = new Set((m.properties ?? []).map((p) => p.id));
-          return { ...m, properties: [...(m.properties ?? []), ...event.items.filter((p) => !known.has(p.id))] };
-        });
         break;
       case "appointment": {
         const info = { tipo: event.tipo, quando: event.quando, com: event.com, imovel: event.imovel };
@@ -175,7 +181,12 @@ export function ChatApp() {
         break;
       case "done":
         setLead(event.lead);
-        patchLast((m) => ({ ...m, content: event.reply || m.content, streaming: false }));
+        patchLast((m) => ({
+          ...m,
+          content: event.bubbles.at(-1) || m.content,
+          properties: event.property_ids.map((id) => propertyCache.get(id)).filter((p): p is Property => Boolean(p)),
+          streaming: false,
+        }));
         break;
     }
   }

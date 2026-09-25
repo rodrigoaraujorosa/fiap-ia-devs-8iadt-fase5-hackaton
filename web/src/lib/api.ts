@@ -48,7 +48,7 @@ export type Lead = {
   investor_profile: string | null;
   ticket: number | null;
   expected_return: string | null;
-  extra: { preferences?: string; wants_meeting?: boolean; handoff_reason?: string };
+  extra: { preferences?: string; wants_meeting?: boolean; handoff_reason?: string; phone_declined?: boolean };
   score: number;
   temperature: "quente" | "morno" | "frio";
   status: string;
@@ -98,12 +98,25 @@ export type BrokerSummary = {
 
 export type Summary = { id: number; content: BrokerSummary; text: string; created_at: string };
 
+export type EmailLog = {
+  id: number;
+  trigger: "agendamento" | "encaminhamento" | "manual";
+  status: "enviado" | "erro" | "ignorado";
+  recipient: string | null;
+  intended_recipient: string | null;
+  demo_mode: boolean;
+  subject: string;
+  detail: string | null;
+  created_at: string;
+};
+
 export type LeadDetail = Lead & {
   assigned_broker: Broker | null;
   summary: Summary | null;
   appointments: Appointment[];
   messages: ChatMessage[];
   missing: string[];
+  emails: EmailLog[];
 };
 
 export type Metrics = {
@@ -126,6 +139,11 @@ export type FollowupConfig = {
   quiet_hours: boolean;
   quiet_start: string;
   quiet_end: string;
+};
+
+export type EmailConfig = { enabled: boolean; demo_mode: boolean; demo_recipient: string };
+export type EmailConfigOut = EmailConfig & {
+  smtp: { host: string; port: number; security: string; authenticated: boolean; sender: string; local_test_inbox: boolean };
 };
 
 export type DemoResetResult = { leads: number; appointments: number; slots: number };
@@ -152,12 +170,13 @@ export type ChatEvent =
   | { type: "analysis"; route: string; intent: string; score: number; temperature: Lead["temperature"]; status: string; missing: string[] }
   | { type: "agent"; agent: string }
   | { type: "token"; text: string }
+  | { type: "bubble" }
   | { type: "tool"; name: string; status: "start" | "done" | "error"; input?: Record<string, unknown> }
   | { type: "properties"; items: Property[] }
   | { type: "appointment"; id: string; tipo: string; quando: string; com: string; imovel: string | null }
   | { type: "handoff"; corretor: string; prazo_retorno: string }
   | { type: "error"; message: string }
-  | { type: "done"; reply: string; agent: string | null; lead: Lead };
+  | { type: "done"; reply: string; bubbles: string[]; property_ids: string[]; agent: string | null; lead: Lead };
 
 /** Envia a mensagem e entrega cada evento SSE da resposta (fetch + ReadableStream, pois é POST). */
 export async function streamChat(leadId: string, content: string, onEvent: (event: ChatEvent) => void) {

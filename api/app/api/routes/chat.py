@@ -34,7 +34,7 @@ def create_session(payload: LeadCreate | None = None, db: Session = Depends(get_
 @router.get("/{lead_id}/messages", response_model=list[MessageOut])
 def list_messages(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     _get_lead(db, lead_id)
-    return db.scalars(select(Message).where(Message.lead_id == lead_id).order_by(Message.created_at, Message.id)).all()
+    return db.scalars(select(Message).where(Message.lead_id == lead_id).order_by(Message.id)).all()
 
 
 @router.post("/{lead_id}/messages")

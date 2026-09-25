@@ -15,6 +15,7 @@ from app.core import observability
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models import Lead, Message, Summary
+from app.services.mailer import send_summary_email
 from app.services.scheduling import format_slot, upcoming_appointment
 
 log = logging.getLogger(__name__)
@@ -24,7 +25,8 @@ SUMMARY_PROMPT = """\
 Você prepara o briefing de um lead para o corretor de uma imobiliária em São Paulo, a partir da conversa do lead \
 com a SDR virtual e dos dados do CRM. O corretor vai ler em 30 segundos antes de ligar ou encontrar o cliente.
 
-Seja objetivo e concreto; use apenas fatos da conversa e do CRM (não invente). Escreva em português do Brasil.
+Seja objetivo e concreto; use apenas fatos da conversa e do CRM (não invente). Escreva tudo em português do Brasil, \
+sem palavras em inglês.
 """
 
 
@@ -69,7 +71,7 @@ def _crm_snapshot(db: Session, lead: Lead) -> dict:
 def generate_summary(db: Session, lead_id: uuid.UUID) -> Summary:
     settings = get_settings()
     lead = db.get(Lead, lead_id)
-    messages = db.scalars(select(Message).where(Message.lead_id == lead_id).order_by(Message.created_at)).all()
+    messages = db.scalars(select(Message).where(Message.lead_id == lead_id).order_by(Message.id)).all()
     conversation = "\n".join(
         f"{'Cliente' if m.role == 'user' else 'SDR'}: {m.content}" for m in messages[-40:] if m.role != "system"
     )
@@ -104,14 +106,15 @@ def observation_for(lead_id: uuid.UUID, prompt: str):
     )
 
 
-def _generate_in_background(lead_id: uuid.UUID) -> None:
+def _generate_in_background(lead_id: uuid.UUID, trigger: str) -> None:
     try:
         with observability.trace("resumo_corretor", session_id=str(lead_id)), SessionLocal() as db:
-            generate_summary(db, lead_id)
+            summary = generate_summary(db, lead_id)
+            send_summary_email(db, lead_id, trigger, summary)
     except (anthropic.APIError, RuntimeError):
         log.exception("Falha ao gerar resumo do lead %s", lead_id)
 
 
-def submit_summary(lead_id: uuid.UUID) -> None:
-    """Gera o resumo sem bloquear a resposta ao lead."""
-    _executor.submit(_generate_in_background, lead_id)
+def submit_summary(lead_id: uuid.UUID, trigger: str) -> None:
+    """Gera o resumo e o envia ao corretor por e-mail, sem bloquear a resposta ao lead."""
+    _executor.submit(_generate_in_background, lead_id, trigger)
