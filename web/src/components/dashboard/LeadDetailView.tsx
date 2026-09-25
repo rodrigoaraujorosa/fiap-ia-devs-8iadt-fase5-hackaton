@@ -1,11 +1,11 @@
 "use client";
 
-import { ArrowLeft, BellRing, CalendarCheck, Loader2, Mail, MailCheck, MailWarning, MailX, Sparkles, UserRound } from "lucide-react";
+import { ArrowLeft, BellRing, CalendarCheck, Globe, Loader2, Mail, MailCheck, MailWarning, MailX, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Card, EmptyState, Markdown, ScoreMeter, StatusBadge, Tag, TemperatureBadge } from "@/components/ui";
-import { apiGet, apiPost, type EmailLog, type LeadDetail, type Summary } from "@/lib/api";
+import { apiGet, apiPost, type EmailLog, type LeadDetail, type LeadSource, type Summary } from "@/lib/api";
 import { AGENT_LABEL, FIELD_LABEL, INTENT_LABEL, compactBrl, dateTime, relativeTime } from "@/lib/format";
 
 function SummaryBlock({ summary }: { summary: Summary }) {
@@ -114,6 +114,22 @@ function EmailStatus({ emails, sending, onSend }: { emails: EmailLog[]; sending:
   );
 }
 
+/** De onde o lead veio (widget no site da imobiliária): página de entrada, campanha e imóvel em foco. */
+function SourceLine({ source, viewing }: { source: LeadSource; viewing?: string }) {
+  const campaign = [source.utm_source, source.utm_medium, source.utm_campaign].filter(Boolean).join(" / ");
+  const parts = [
+    source.page_title && `entrou por "${source.page_title}"`,
+    campaign && `campanha ${campaign}`,
+    viewing && `vendo ${viewing}`,
+  ].filter(Boolean);
+  if (!parts.length) return null;
+  return (
+    <p className="flex flex-wrap items-center gap-1.5 text-sm text-ink-2">
+      <Globe aria-hidden size={14} className="text-muted" /> Origem: {parts.join(" · ")}
+    </p>
+  );
+}
+
 export function LeadDetailView({ id }: { id: string }) {
   const [lead, setLead] = useState<LeadDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -197,7 +213,8 @@ export function LeadDetailView({ id }: { id: string }) {
         </div>
       </div>
       <p className="text-sm text-ink-2">
-        Canal {lead.channel} · criado {relativeTime(lead.created_at)} · último contato {relativeTime(lead.last_message_at)}
+        {lead.channel === "site" ? `Site da ${lead.extra?.source?.brand ?? "imobiliária"}` : "Chat ImobiQ"} · criado{" "}
+        {relativeTime(lead.created_at)} · último contato {relativeTime(lead.last_message_at)}
         {lead.assigned_broker && (
           <>
             {" "}
@@ -205,6 +222,7 @@ export function LeadDetailView({ id }: { id: string }) {
           </>
         )}
       </p>
+      {lead.extra?.source && <SourceLine source={lead.extra.source} viewing={lead.extra.viewing} />}
 
       {error && (
         <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">

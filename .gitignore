@@ -26,3 +26,6 @@ local_cache/
 .DS_Store
 Thumbs.db
 .idea/
+
+# site fictício gerado (python site-exemplo/build.py)
+site-exemplo/dist/

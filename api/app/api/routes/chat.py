@@ -23,8 +23,13 @@ def _get_lead(db: Session, lead_id: uuid.UUID) -> Lead:
 
 @router.post("/sessions", response_model=LeadOut, status_code=201)
 def create_session(payload: LeadCreate | None = None, db: Session = Depends(get_db)):
-    """Inicia uma conversa: cria o lead (canal web)."""
-    lead = Lead(channel=Channel.WEB, regions=[], extra={}, **(payload.model_dump() if payload else {}))
+    """Inicia uma conversa: cria o lead. Com `source` (widget no site de uma imobiliária), o canal é "site"."""
+    data = payload.model_dump(exclude={"source"}) if payload else {}
+    source = payload.source.model_dump(exclude_none=True) if payload and payload.source else None
+    extra = {"source": source} if source else {}
+    if source and source.get("property_id"):
+        extra["viewing"] = source["property_id"]
+    lead = Lead(channel=Channel.SITE if source else Channel.WEB, regions=[], extra=extra, **data)
     db.add(lead)
     db.commit()
     db.refresh(lead)
@@ -45,7 +50,7 @@ def send_message(lead_id: uuid.UUID, payload: MessageIn, db: Session = Depends(g
     """
     _get_lead(db, lead_id)
     return StreamingResponse(
-        stream_turn_sse(lead_id, payload.content.strip()),
+        stream_turn_sse(lead_id, payload.content.strip(), payload.context),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

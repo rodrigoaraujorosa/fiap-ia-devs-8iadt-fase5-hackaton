@@ -17,7 +17,11 @@ const FEATURES = [
   { icon: Target, title: "Qualificação", text: "Identifica compra, aluguel ou investimento e calcula um score." },
   { icon: SearchCheck, title: "Imóveis certos", text: "Busca híbrida (semântica + texto) na base da imobiliária." },
   { icon: CalendarCheck, title: "Agendamento", text: "Marca visitas e reuniões na agenda do corretor da região." },
-  { icon: FileText, title: "Resumo para o corretor", text: "Briefing com perfil, objeções e próximos passos." },
+  {
+    icon: FileText,
+    title: "Resumo para o corretor",
+    text: "Briefing com perfil, objeções e próximos passos, enviado por e-mail com o convite da visita para a agenda.",
+  },
   { icon: BellRing, title: "Follow-up automático", text: "Retoma leads que sumiram, com o contexto da conversa." },
 ];
 
@@ -28,13 +32,13 @@ export default async function Home() {
     <div className="space-y-10 py-4">
       <section className="max-w-3xl space-y-4">
         <LogoMark size={56} />
-        <p className="text-sm font-medium text-brand">Hackathon FIAP · Pós Tech IA para Devs</p>
+        <p className="text-sm font-medium text-brand">Hackathon FIAP · Pós Tech IA para Devs · Turma 8IADT · Grupo 65</p>
         <h1 className="text-4xl font-semibold leading-tight text-ink">
           Nenhum lead sem resposta. Todo corretor com o cliente certo.
         </h1>
         <p className="text-lg text-ink-2">
           A Laris é uma SDR com IA generativa: atende leads imobiliários na hora, qualifica, mostra imóveis, agenda
-          visitas e entrega um resumo pronto para o corretor.
+          visitas e envia ao corretor, por e-mail, um resumo pronto com o convite da visita.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/chat" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-ink">

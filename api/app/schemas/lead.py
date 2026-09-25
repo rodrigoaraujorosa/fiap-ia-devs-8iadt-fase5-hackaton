@@ -3,11 +3,34 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+PROPERTY_CODE = r"^IMV-\d{3}$"
+
+
+class LeadSource(BaseModel):
+    """Origem do lead que chega pelo widget (site da imobiliária). Tudo opcional e com tamanho limitado."""
+
+    brand: str | None = Field(None, max_length=80, description="Imobiliária dona do site onde o widget está")
+    page_url: str | None = Field(None, max_length=500)
+    page_title: str | None = Field(None, max_length=200)
+    referrer: str | None = Field(None, max_length=500)
+    utm_source: str | None = Field(None, max_length=80)
+    utm_medium: str | None = Field(None, max_length=80)
+    utm_campaign: str | None = Field(None, max_length=120)
+    property_id: str | None = Field(None, pattern=PROPERTY_CODE, description="Imóvel da página de entrada")
+
+
+class PageContext(BaseModel):
+    """Onde o visitante está agora (enviado a cada mensagem pelo widget)."""
+
+    page_url: str | None = Field(None, max_length=500)
+    property_id: str | None = Field(None, pattern=PROPERTY_CODE)
+
 
 class LeadCreate(BaseModel):
     name: str | None = Field(None, max_length=120)
     phone: str | None = Field(None, max_length=30)
     email: str | None = Field(None, max_length=160)
+    source: LeadSource | None = None
 
 
 class LeadOut(BaseModel):
@@ -42,6 +65,7 @@ class LeadOut(BaseModel):
 
 class MessageIn(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
+    context: PageContext | None = None
 
 
 class MessageOut(BaseModel):

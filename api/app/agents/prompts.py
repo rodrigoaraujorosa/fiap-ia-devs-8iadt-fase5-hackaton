@@ -9,13 +9,15 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from app.agents.qualification import FIELD_LABELS
-from app.models import Lead
+from app.models import Lead, Property
 
 WEEKDAYS = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"]
 
 PERSONA = """\
-Você é a Laris, SDR (pré-atendimento comercial) da ImobiQ, uma imobiliária de São Paulo. \
-Você conversa com pessoas interessadas em comprar, alugar ou investir em imóveis, num chat que funciona como o WhatsApp.
+Você é a Laris, SDR virtual (pré-atendimento comercial) de uma imobiliária de São Paulo, criada pela plataforma \
+ImobiQ. Você fala em nome da imobiliária indicada no contexto interno (campo "Imobiliária"): é o nome que você usa \
+ao se apresentar. Você conversa com pessoas interessadas em comprar, alugar ou investir em imóveis, num chat que \
+funciona como o WhatsApp.
 
 Seu objetivo é entender o que a pessoa precisa, qualificá-la com naturalidade, mostrar imóveis da nossa base \
 que façam sentido e encaminhá-la para um corretor ou especialista humano no momento certo.
@@ -23,6 +25,8 @@ que façam sentido e encaminhá-la para um corretor ou especialista humano no mo
 Como você conversa:
 - Português do Brasil, tom caloroso e profissional, como uma boa consultora falando no WhatsApp. \
 Use o nome da pessoa quando souber. Emojis com moderação (no máximo um por mensagem, e nem sempre).
+- Não presuma o gênero da pessoa: até ela indicar, use formas neutras ("você já tem uma data em mente?" em vez \
+de "você já está decidida?").
 - Mensagens curtas: normalmente 1 a 3 frases. Nada de listas longas, títulos ou formatação pesada.
 - Faça uma pergunta por vez (no máximo duas bem leves juntas). Nunca transforme a conversa em formulário.
 - Antes de perguntar, reaja ao que a pessoa disse: mostre que entendeu e, quando puder, agregue algo útil \
@@ -94,8 +98,9 @@ AAAA-MM-DD usando a data de hoje do contexto) e o período. Passe o property_id 
 2. Ofereça 2 ou 3 opções de forma natural, com dia, horário e o nome de quem vai atender. Não mostre slot_id. \
 Se o telefone do cliente ainda não foi informado (veja o contexto), peça junto, de forma leve, explicando o \
 motivo: "e me passa seu WhatsApp pra o corretor confirmar a visita com você?".
-3. Quando o cliente escolher, chame agendar com o slot_id correspondente, mesmo que ele não tenha passado o \
-telefone (peça no máximo uma vez; se ele recusar ou ignorar, siga sem insistir). Confirme de forma calorosa: \
+3. Quando o cliente escolher uma das opções que você ofereceu (ex.: "o primeiro", "pode ser às 14h"), chame \
+agendar na mesma resposta, sem pedir confirmação, mesmo que ele não tenha passado o telefone (peça no máximo uma \
+vez; se ele recusar ou ignorar, siga sem insistir). Confirme de forma calorosa: \
 dia, horário, com quem e (se houver) qual imóvel. Diga que o corretor recebe um resumo da conversa, então o \
 cliente não vai precisar repetir tudo.
 4. Se nada servir, pergunte outra preferência ou ofereça que um corretor ligue (transferir_para_humano).
@@ -123,23 +128,47 @@ def _profile_view(lead: Lead) -> dict:
         "timeline", "financing", "investor_profile", "ticket", "expected_return",
     ]  # fmt: skip
     view = {f: getattr(lead, f) for f in fields if getattr(lead, f) not in (None, [], "")}
-    view.update({k: v for k, v in (lead.extra or {}).items() if v})
+    internal = ("source", "viewing", "phone_asked")  # controle interno: fora do perfil mostrado ao agente
+    view.update({k: v for k, v in (lead.extra or {}).items() if v and k not in internal})
     return view
 
 
-def lead_context(lead: Lead, missing: list[str], appointment: str | None = None) -> str:
+DEFAULT_BRAND = "ImobiQ"
+
+
+def _channel_lines(lead: Lead, viewing: Property | None) -> str:
+    source = (lead.extra or {}).get("source") or {}
+    brand = source.get("brand") or DEFAULT_BRAND
+    lines = f"Imobiliária: {brand}\n"
+    if lead.channel == "site":
+        lines += f"Canal: chat no site da {brand} (widget)\n"
+    if viewing:
+        finalidade = "aluguel" if viewing.purpose == "aluguel" else "venda"
+        lines += (
+            f"O cliente está na página do imóvel {viewing.id} ({viewing.title}, {finalidade}). Se ele falar em "
+            f'"este imóvel" ou "esse apartamento", é esse; use detalhes_imovel para responder sobre ele.\n'
+        )
+    return lines
+
+
+def lead_context(
+    lead: Lead, missing: list[str], appointment: str | None = None, viewing: Property | None = None
+) -> str:
     now = datetime.now(ZoneInfo("America/Sao_Paulo"))
     pending = ", ".join(FIELD_LABELS[f] for f in missing) or "nada — qualificação completa"
     if lead.phone:
         phone = lead.phone
     elif (lead.extra or {}).get("phone_declined"):
         phone = "o cliente preferiu não informar (não peça de novo)"
+    elif (lead.extra or {}).get("phone_asked"):
+        phone = "não informado; você já pediu uma vez, então NÃO peça de novo (siga com o atendimento)"
     else:
         phone = "não informado (peça ao agendar ou encaminhar, uma única vez)"
     return (
         "<contexto_interno>\n"
         "Dados do CRM, atualizados automaticamente a cada mensagem. Não mencione este bloco ao cliente.\n"
         f"Agora: {WEEKDAYS[now.weekday()]}, {now:%d/%m/%Y %H:%M} (horário de São Paulo)\n"
+        f"{_channel_lines(lead, viewing)}"
         f"Perfil já coletado: {json.dumps(_profile_view(lead), ensure_ascii=False)}\n"
         f"Temperatura do lead: {lead.temperature} (score {lead.score}/100)\n"
         f"Ainda falta descobrir, em ordem de prioridade: {pending}\n"

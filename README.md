@@ -78,15 +78,39 @@ flowchart LR
 | 💬 **Chat do lead** (`/chat`) | Conversa no estilo WhatsApp com a Laris: resposta em streaming, indicador do que a IA está fazendo ("consultando imóveis…"), cards dos imóveis sugeridos, confirmação de agendamento e follow-ups que chegam sozinhos. Ao lado, o painel **"O que a IA está entendendo"** mostra em tempo real o agente ativo, score, temperatura, perfil extraído e as próximas perguntas da qualificação. |
 | 📊 **Dashboard do corretor** (`/dashboard`) | Indicadores (leads, taxa de qualificação, quentes, agendamentos, follow-ups), funil por etapa, intenção dos leads, próximos agendamentos e tabela de leads com filtros. Atualiza sozinho a cada 10s. |
 | 🗂️ **Detalhe do lead** (`/dashboard/leads/{id}`) | Resumo inteligente para o corretor (gerar/atualizar), status e histórico do e-mail ao corretor (com reenvio), perfil, agendamentos e a conversa completa, com o agente que respondeu cada mensagem e os follow-ups marcados. |
+| 🧩 **Chat no widget** (`/embed`) | Versão enxuta do chat usada dentro do iframe do widget, com a marca da imobiliária, saudação sobre o imóvel da página e botão de fechar. |
 | ⚙️ **Configurações** (`/configuration`) | Liga/desliga do follow-up com efeito imediato, minutos até a 1ª tentativa, máximo de tentativas, horário de silêncio e botão "rodar agora". Controla o e-mail aos corretores (liga/desliga, modo demonstração, e-mail de teste). Também reseta os dados de demonstração (8 leads em todas as etapas do funil, com conversas, resumos e agendamentos). |
 
 A conversa fica salva no navegador (o lead é retomado ao recarregar); use **Nova conversa** para simular outro lead. Os atalhos iniciais do chat reproduzem os três cenários do enunciado.
+
+## 🧩 Widget para sites de imobiliárias
+
+A Laris pode ser instalada no site de qualquer imobiliária com uma linha, antes de `</body>`:
+
+```html
+<script src="https://SEU-APP/widget.js" data-brand="Nome da Imobiliária" data-property="IMV-007" defer></script>
+```
+
+- Uma bolha flutuante abre o chat num iframe (tela cheia no celular). O chat só carrega no primeiro clique, sem pesar no site, e o CSS fica isolado (Shadow DOM).
+- A Laris se apresenta em nome da imobiliária (`data-brand`) e, na página de um imóvel (`data-property`), já abre falando dele e responde sobre "este imóvel".
+- O dashboard mostra a origem do lead: site, página de entrada e campanha (UTM de primeiro toque).
+- A conversa continua se o visitante recarregar ou mudar de página (a sessão fica guardada no domínio do site).
+- Opcionais: `data-teaser-delay` (segundos até o convite aparecer; `0` desliga) e `data-position="left"`. API JavaScript: `ImobiQ.open()`, `ImobiQ.close()`, `ImobiQ.toggle()`.
+
+O site fictício da **Imobiliária Exemplo** (`site-exemplo/`) é gerado a partir da mesma base de imóveis e serve de demonstração. Para produção, gere apontando para o widget publicado e suba a pasta `dist/` em qualquer hospedagem estática:
+
+```bash
+python site-exemplo/build.py --widget https://SEU-APP/widget.js
+```
+
+No WordPress, a linha do script pode ser colocada com um plugin de inserção de código no rodapé (ex.: WPCode).
 
 ## 📁 Estrutura
 
 ```
 api/    FastAPI + agentes (app/), migrations (alembic/), seed (scripts/), testes (tests/)
-web/    Next.js — chat do lead e dashboard do corretor
+web/    Next.js — chat do lead, dashboard do corretor, configurações e o widget (public/widget.js)
+site-exemplo/  gerador do site fictício da "Imobiliária Exemplo", com o widget embutido
 data/   base simulada: 100 imóveis em SP (gerador determinístico), corretores e leads de demonstração
 docs/   arquitetura, explicação da IA e pitch
 ```
@@ -97,7 +121,8 @@ Pré-requisitos: Docker Desktop. Para desenvolvimento local: Python 3.12 + [uv](
 
 ```bash
 cp .env.example .env              # preencha ANTHROPIC_API_KEY
-docker compose up -d --build      # db + api + web
+python site-exemplo/build.py      # gera o site fictício (site-exemplo/dist)
+docker compose up -d --build      # db + api + web + mailpit + site
 docker compose exec api python -m scripts.seed --demo   # --demo: cria também os leads de exemplo
 ```
 
@@ -106,6 +131,7 @@ docker compose exec api python -m scripts.seed --demo   # --demo: cria também o
 | 🖥️ Web | http://localhost:3001 |
 | ⚙️ API (Swagger) | http://localhost:8001/docs |
 | 📬 Mailpit (e-mails de teste) | http://localhost:8025 |
+| 🏠 Site fictício com o widget | http://localhost:5500 |
 
 > ℹ️ As portas 3000/8000 costumam estar ocupadas no Windows, por isso o padrão é 3001/8001 (configurável no `.env`).
 

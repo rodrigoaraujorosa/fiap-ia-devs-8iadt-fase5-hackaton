@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, CalendarCheck, Headset, RotateCcw, SendHorizontal } from "lucide-react";
+import { BellRing, CalendarCheck, Headset, RotateCcw, SendHorizontal, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LarisAvatar } from "@/components/Brand";
@@ -14,9 +14,18 @@ import {
   type ChatEvent,
   type Lead,
   type LeadDetail,
+  type LeadSource,
   type Property,
 } from "@/lib/api";
-import { TOOL_ACTIVITY, clockTime, dateTime } from "@/lib/format";
+import { TOOL_ACTIVITY, brl, clockTime, dateTime } from "@/lib/format";
+
+/** Chat dentro do widget (site de uma imobiliária): a sessão é guardada pela página que hospeda o widget. */
+export type EmbedOptions = {
+  brand: string;
+  leadId: string | null;
+  hostOrigin: string | null; // origem da página hospedeira, destino das mensagens postMessage
+  source: LeadSource;
+};
 
 type UiMessage = {
   key: string;
@@ -39,6 +48,19 @@ const SUGGESTIONS = [
   "Quero alugar um studio perto da Paulista.",
 ];
 const POLL_MS = 5000;
+
+function embedWelcome(brand: string, property: Property | null): string {
+  if (!property) {
+    return `Oi! Eu sou a Laris, assistente virtual da ${brand} 😊 Posso te ajudar a comprar, alugar ou investir em um imóvel. Me conta o que você procura?`;
+  }
+  const price = property.purpose === "aluguel" ? `${brl(property.price)}/mês` : brl(property.price);
+  return `Oi! Eu sou a Laris, assistente virtual da ${brand} 😊 Vi que você está olhando o ${property.title} (${price}). Quer saber mais sobre ele, ver opções parecidas ou agendar uma visita?`;
+}
+
+function embedSuggestions(property: Property | null): string[] {
+  if (!property) return SUGGESTIONS;
+  return ["Quero agendar uma visita", "Me conta mais sobre este imóvel", "Tem outros parecidos?"];
+}
 
 const propertyCache = new Map<string, Property>();
 async function loadProperties(ids: string[] = []): Promise<Property[]> {
@@ -64,10 +86,13 @@ function upcomingAppointment(detail: LeadDetail): AppointmentInfo | null {
     : null;
 }
 
-export function ChatApp() {
-  const [leadId, setLeadId] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : window.localStorage.getItem(CHAT_STORAGE_KEY),
-  );
+export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
+  const [leadId, setLeadId] = useState<string | null>(() => {
+    if (embed) return embed.leadId;
+    return typeof window === "undefined" ? null : window.localStorage.getItem(CHAT_STORAGE_KEY);
+  });
+  const [pageProperty, setPageProperty] = useState<Property | null>(null);
+  const leadIdRef = useRef(leadId);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [lead, setLead] = useState<Lead | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -110,16 +135,46 @@ export function ChatApp() {
     if (lastAgent) setAgent(lastAgent);
   }, []);
 
-  // retoma a conversa salva neste navegador (o lead_id fica no localStorage)
+  // guarda a sessão: no app, no localStorage; no widget, avisa a página hospedeira (que guarda no domínio dela)
+  const saveLeadId = useCallback(
+    (id: string | null) => {
+      leadIdRef.current = id;
+      setLeadId(id);
+      if (embed) {
+        if (embed.hostOrigin) window.parent.postMessage({ type: "imobiq:lead", id }, embed.hostOrigin);
+        return;
+      }
+      if (id) window.localStorage.setItem(CHAT_STORAGE_KEY, id);
+      else window.localStorage.removeItem(CHAT_STORAGE_KEY);
+    },
+    [embed],
+  );
+
+  // retoma a conversa salva (localStorage no app; parâmetro da página hospedeira no widget)
   const restored = useRef(false);
   useEffect(() => {
     if (restored.current || !leadId) return;
     restored.current = true;
-    syncFromServer(leadId).catch(() => {
-      window.localStorage.removeItem(CHAT_STORAGE_KEY);
-      setLeadId(null);
-    });
-  }, [leadId, syncFromServer]);
+    syncFromServer(leadId).catch(() => saveLeadId(null));
+  }, [leadId, syncFromServer, saveLeadId]);
+
+  // no widget, o foco fica dentro do iframe: o Esc precisa ser repassado ao site para fechar o chat
+  useEffect(() => {
+    const host = embed?.hostOrigin;
+    if (!host) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") window.parent.postMessage({ type: "imobiq:close" }, host);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [embed?.hostOrigin]);
+
+  // widget na página de um imóvel: carrega o imóvel para a saudação personalizada
+  const pagePropertyId = embed?.source.property_id;
+  useEffect(() => {
+    if (!pagePropertyId) return;
+    loadProperties([pagePropertyId]).then(([p]) => setPageProperty(p ?? null));
+  }, [pagePropertyId]);
 
   // follow-ups chegam sem o lead ter escrito: consulta periódica enquanto ocioso
   useEffect(() => {
@@ -206,15 +261,15 @@ export function ChatApp() {
       { key: `a-${now}`, role: "assistant", content: "", at: now, streaming: true },
     ]);
     try {
-      let id = leadId;
+      let id = leadIdRef.current;
       if (!id) {
-        const created = await apiPost<Lead>("/chat/sessions", {});
+        const created = await apiPost<Lead>("/chat/sessions", embed ? { source: embed.source } : {});
         id = created.id;
-        window.localStorage.setItem(CHAT_STORAGE_KEY, id);
-        setLeadId(id);
+        saveLeadId(id);
         setLead(created);
       }
-      await streamChat(id, content, handleEvent);
+      const context = embed ? { page_url: embed.source.page_url, property_id: embed.source.property_id } : undefined;
+      await streamChat(id, content, handleEvent, context);
     } catch {
       setError("Não consegui falar com o servidor. Verifique se a API está no ar e tente de novo.");
       setMessages((list) => list.filter((m) => !(m.streaming && !m.content)));
@@ -223,17 +278,16 @@ export function ChatApp() {
       setBusy(false);
       setActivity(null);
       patchLast((m) => ({ ...m, streaming: false }));
-      if (leadId || window.localStorage.getItem(CHAT_STORAGE_KEY)) {
+      if (leadIdRef.current) {
         lastServerId.current = null; // força ressincronizar ids e horários do servidor
-        syncFromServer(window.localStorage.getItem(CHAT_STORAGE_KEY)!).catch(() => {});
+        syncFromServer(leadIdRef.current).catch(() => {});
       }
     }
   }
 
   function reset() {
-    window.localStorage.removeItem(CHAT_STORAGE_KEY);
     lastServerId.current = null;
-    setLeadId(null);
+    saveLeadId(null);
     setMessages([]);
     setLead(null);
     setAnalysis(null);
@@ -243,13 +297,20 @@ export function ChatApp() {
   }
 
   // --------------------------------------------------------------- render
-  return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <section className="flex h-[calc(100dvh-9.5rem)] min-h-[32rem] flex-col overflow-hidden rounded-xl border border-line bg-surface">
+  const welcome = embed ? embedWelcome(embed.brand, pageProperty) : WELCOME;
+  const suggestions = embed ? embedSuggestions(pageProperty) : SUGGESTIONS;
+  const chat = (
+      <section
+        className={
+          embed
+            ? "flex h-dvh flex-col overflow-hidden bg-surface"
+            : "flex h-[calc(100dvh-9.5rem)] min-h-[32rem] flex-col overflow-hidden rounded-xl border border-line bg-surface"
+        }
+      >
         <header className="flex items-center gap-3 border-b border-line px-4 py-3">
           <LarisAvatar size={36} />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-ink">Laris · ImobiQ</p>
+            <p className="text-sm font-semibold text-ink">Laris · {embed ? embed.brand : "ImobiQ"}</p>
             <p className="truncate text-xs text-ink-2" aria-live="polite">
               {busy ? (activity ? `${activity}…` : "digitando…") : "online · responde na hora"}
             </p>
@@ -258,15 +319,26 @@ export function ChatApp() {
             type="button"
             onClick={reset}
             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-2 hover:bg-surface-2"
-            title="Começar uma nova conversa como outro lead"
+            title={embed ? "Começar uma nova conversa" : "Começar uma nova conversa como outro lead"}
+            aria-label="Nova conversa"
           >
-            <RotateCcw aria-hidden size={13} /> Nova conversa
+            <RotateCcw aria-hidden size={13} /> {!embed && "Nova conversa"}
           </button>
+          {embed && (
+            <button
+              type="button"
+              onClick={() => embed.hostOrigin && window.parent.postMessage({ type: "imobiq:close" }, embed.hostOrigin)}
+              className="grid size-8 place-items-center rounded-md text-ink-2 hover:bg-surface-2"
+              aria-label="Fechar o chat"
+            >
+              <X aria-hidden size={18} />
+            </button>
+          )}
         </header>
 
         <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-chat px-3 py-4 sm:px-6">
           <Bubble role="assistant" at={null}>
-            <p>{WELCOME}</p>
+            <p>{welcome}</p>
           </Bubble>
           {messages.map((m) => (
             <div key={m.key} className="space-y-2">
@@ -299,7 +371,7 @@ export function ChatApp() {
           ))}
           {!messages.length && (
             <div className="flex flex-wrap gap-2 pt-2">
-              {SUGGESTIONS.map((s) => (
+              {suggestions.map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -346,7 +418,12 @@ export function ChatApp() {
           </button>
         </form>
       </section>
+  );
 
+  if (embed) return chat;
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      {chat}
       <aside className="space-y-3 lg:h-[calc(100dvh-9.5rem)] lg:overflow-y-auto">
         <LeadPanel lead={lead} analysis={analysis} agent={agent} appointment={appointment} />
       </aside>

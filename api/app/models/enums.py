@@ -31,6 +31,7 @@ class Urgency(StrEnum):
 
 class Channel(StrEnum):
     WEB = "web"
+    SITE = "site"  # widget embutido no site de uma imobiliária
     WHATSAPP = "whatsapp"
 
 

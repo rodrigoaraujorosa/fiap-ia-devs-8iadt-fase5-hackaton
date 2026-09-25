@@ -48,7 +48,14 @@ export type Lead = {
   investor_profile: string | null;
   ticket: number | null;
   expected_return: string | null;
-  extra: { preferences?: string; wants_meeting?: boolean; handoff_reason?: string; phone_declined?: boolean };
+  extra: {
+    preferences?: string;
+    wants_meeting?: boolean;
+    handoff_reason?: string;
+    phone_declined?: boolean;
+    source?: LeadSource;
+    viewing?: string;
+  };
   score: number;
   temperature: "quente" | "morno" | "frio";
   status: string;
@@ -179,11 +186,29 @@ export type ChatEvent =
   | { type: "done"; reply: string; bubbles: string[]; property_ids: string[]; agent: string | null; lead: Lead };
 
 /** Envia a mensagem e entrega cada evento SSE da resposta (fetch + ReadableStream, pois é POST). */
-export async function streamChat(leadId: string, content: string, onEvent: (event: ChatEvent) => void) {
+/** Origem do lead quando ele chega pelo widget no site de uma imobiliária. */
+export type LeadSource = {
+  brand?: string;
+  page_url?: string;
+  page_title?: string;
+  referrer?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  property_id?: string;
+};
+export type PageContext = { page_url?: string; property_id?: string };
+
+export async function streamChat(
+  leadId: string,
+  content: string,
+  onEvent: (event: ChatEvent) => void,
+  context?: PageContext,
+) {
   const res = await fetch(`${API_URL}/chat/${leadId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, context }),
   });
   if (!res.ok || !res.body) throw new Error(`Falha ao enviar mensagem: ${res.status}`);
 

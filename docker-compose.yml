@@ -42,6 +42,13 @@ services:
       - "${MAILPIT_UI_PORT:-8025}:8025"
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
 
+  site:  # site fictício da "Imobiliária Exemplo" com o widget: http://localhost:5500 (gere com site-exemplo/build.py)
+    image: nginx:alpine
+    ports:
+      - "${SITE_PORT:-5500}:80"
+    volumes:
+      - ./site-exemplo/dist:/usr/share/nginx/html:ro
+
   web:
     build:
       context: ./web

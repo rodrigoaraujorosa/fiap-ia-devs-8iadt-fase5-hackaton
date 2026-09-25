@@ -28,7 +28,7 @@ from app.agents.tools import TOOLSETS, ToolContext, run_tool
 from app.core import observability
 from app.core.config import get_settings
 from app.db.session import SessionLocal
-from app.models import Lead
+from app.models import Lead, Property
 from app.models.enums import Intent
 from app.services.scheduling import format_slot, upcoming_appointment
 
@@ -85,6 +85,12 @@ def _appointment_text(db, lead_id) -> str | None:
         return None
     text = f"{appt.kind} com {appt.broker.name} em {format_slot(appt.slot.start_at)}"
     return f"{text} (imóvel {appt.property_id})" if appt.property_id else text
+
+
+def _viewing(db, lead: Lead) -> Property | None:
+    """Imóvel da página em que o visitante está (widget no site da imobiliária)."""
+    code = (lead.extra or {}).get("viewing")
+    return db.get(Property, code) if code else None
 
 
 # ---------------------------------------------------------------- supervisor
@@ -204,7 +210,10 @@ def make_agent(route: str):
             ctx = ToolContext(db=db, lead_id=lead_id)
             system = [
                 {"type": "text", "text": system_prompt(route), "cache_control": {"type": "ephemeral"}},
-                {"type": "text", "text": lead_context(lead, state["missing"], _appointment_text(db, lead_id))},
+                {
+                    "type": "text",
+                    "text": lead_context(lead, state["missing"], _appointment_text(db, lead_id), _viewing(db, lead)),
+                },  # fmt: skip
             ]
             history = list(state["messages"])
             new_messages: list[dict[str, Any]] = []
