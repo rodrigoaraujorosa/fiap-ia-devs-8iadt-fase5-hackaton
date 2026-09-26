@@ -9,6 +9,7 @@
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![AWS](https://img.shields.io/badge/Deploy-AWS-FF9900?logo=amazonwebservices&logoColor=white)
+![License](https://img.shields.io/badge/licen%C3%A7a-MIT-green)
 
 POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · Grupo 65: um agente SDR para **imóveis comerciais** que atende empresas e investidores, conversa de forma humanizada, faz a qualificação B2B (atividade, espaço, orçamento, quem decide e prazo), sugere salas, conjuntos, lajes, lojas, galpões e prédios de uma base simulada, agenda visitas com o corretor especialista, faz follow-up automático e envia resumos aos corretores. O código também suporta imóveis residenciais (campo de segmento).
 
@@ -160,3 +161,7 @@ uv run ruff check .
 - [x] **Dia 4** — Chat do lead (streaming + painel da IA em tempo real), dashboard do corretor e detalhe do lead
 - [ ] **Dia 5** — Diferenciais: deploy AWS, segurança, WhatsApp, Voice AI, CRM
 - [ ] **Dia 6** — Documentação, demo e pitch
+
+## 📄 Licença
+
+Distribuído sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE).
