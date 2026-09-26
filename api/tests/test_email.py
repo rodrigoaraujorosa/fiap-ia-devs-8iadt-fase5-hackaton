@@ -24,7 +24,18 @@ CONTENT = {
 
 
 def test_html_escapes_lead_content():
-    lead = SimpleNamespace(name="Ana <b>", phone=None, intent="compra", temperature="quente", score=80, channel="web")
+    lead = SimpleNamespace(
+        name="Ana <b>",
+        phone=None,
+        intent="compra",
+        temperature="quente",
+        score=80,
+        channel="web",
+        company="<i>ACME</i>",
+        job_title=None,
+        decision_maker="sim",
+        business_activity=None,
+    )
     broker = SimpleNamespace(name="Mariana Costa", email="mariana@imobiq.example")
     html = render_html(
         lead=lead,
@@ -37,7 +48,7 @@ def test_html_escapes_lead_content():
         demo_recipient=None,
     )
     assert "<script>" not in html and "&lt;script&gt;" in html
-    assert "Ana &lt;b&gt;" in html
+    assert "Ana &lt;b&gt;" in html and "&lt;i&gt;ACME&lt;/i&gt;" in html
     assert 'href="http://x/&quot;onmouseover="' in html
 
 

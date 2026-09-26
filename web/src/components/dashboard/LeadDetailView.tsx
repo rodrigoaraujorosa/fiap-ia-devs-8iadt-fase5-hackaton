@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Card, EmptyState, Markdown, ScoreMeter, StatusBadge, Tag, TemperatureBadge } from "@/components/ui";
 import { apiGet, apiPost, type EmailLog, type LeadDetail, type LeadSource, type Summary } from "@/lib/api";
-import { AGENT_LABEL, FIELD_LABEL, INTENT_LABEL, compactBrl, dateTime, relativeTime } from "@/lib/format";
+import { AGENT_LABEL, DECISION_LABEL, FIELD_LABEL, INTENT_LABEL, compactBrl, dateTime, relativeTime, spaceLabel } from "@/lib/format";
 
 function SummaryBlock({ summary }: { summary: Summary }) {
   const s = summary.content;
@@ -184,17 +184,22 @@ export function LeadDetailView({ id }: { id: string }) {
 
   const profile: [string, string | null][] = [
     ["Telefone", lead.phone ?? (lead.extra?.phone_declined ? "preferiu não informar" : "não informado")],
+    ["Empresa", lead.company ? `${lead.company}${lead.job_title ? ` · ${lead.job_title}` : ""}` : null],
+    ["Quem decide", lead.decision_maker ? DECISION_LABEL[lead.decision_maker] : null],
     ["Objetivo", INTENT_LABEL[lead.intent] ?? lead.intent],
+    ["Atividade", lead.business_activity],
     ["Tipo", lead.property_type],
+    ["Espaço", spaceLabel(lead)],
     ["Região", lead.regions.join(", ") || null],
     ["Orçamento", lead.budget_max ? `até ${compactBrl(lead.budget_max)}${lead.intent === "aluguel" ? "/mês" : ""}` : null],
+    ["Requisitos", lead.requirements?.length ? lead.requirements.join(", ") : null],
     ["Quartos", lead.bedrooms ? `${lead.bedrooms}+` : null],
     ["Urgência", lead.urgency ? `${lead.urgency}${lead.timeline ? ` (${lead.timeline})` : ""}` : null],
     ["Pagamento", lead.financing],
     ["Perfil investidor", lead.investor_profile],
     ["Ticket", lead.ticket ? compactBrl(lead.ticket) : null],
     ["Retorno esperado", lead.expected_return],
-    ["Preferências", lead.extra?.preferences ?? null],
+    ["Contexto", lead.extra?.preferences ?? null],
     ["Motivo do encaminhamento", lead.extra?.handoff_reason ?? null],
   ];
 

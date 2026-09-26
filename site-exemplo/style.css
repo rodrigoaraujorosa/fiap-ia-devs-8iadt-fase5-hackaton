@@ -49,7 +49,7 @@ img { max-width: 100%; }
 .hero p { margin: 0 0 28px; max-width: 560px; color: #dbe4f0; font-size: 18px; }
 .search {
   display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
-  background: #fff; color: var(--ink); padding: 16px; border-radius: 14px; max-width: 680px;
+  background: #fff; color: var(--ink); padding: 16px; border-radius: 14px; max-width: 900px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
 }
 .search label, .filters label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--ink-2); flex: 1 1 160px; }
@@ -131,3 +131,19 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
   .detail { grid-template-columns: 1fr; }
   .box { position: static; }
 }
+
+/* imóveis comerciais */
+.logo small { display: block; font-size: 11px; color: var(--ink-2); letter-spacing: .02em; margin-top: -2px; }
+.logo span { line-height: 1.15; }
+.tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.tile {
+  display: grid; gap: 2px; padding: 14px 16px; background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  color: var(--navy); text-decoration: none; transition: border-color .15s ease, box-shadow .15s ease;
+}
+.tile:hover { border-color: var(--sand); box-shadow: 0 6px 18px rgba(30, 58, 95, .08); }
+.tile span { font-size: 13px; color: var(--ink-2); }
+.leased { margin: 8px 0 0; font-size: 12px; font-weight: 600; color: #0f5132; background: #e8f5ee; border-radius: 8px; padding: 4px 8px; }
+.leased-box { background: #e8f5ee; color: #0f5132; border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; font-size: 14px; }
+.leased-box p { margin: 0 0 4px; }
+.leased-box p:last-child { margin: 0; }
+.allowed { margin: 0 0 12px; color: var(--ink-2); font-size: 15px; }

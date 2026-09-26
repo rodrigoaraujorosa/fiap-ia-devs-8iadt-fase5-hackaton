@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BarList } from "@/components/BarList";
 import { Card, EmptyState, ScoreMeter, StatTile, StatusBadge, TemperatureBadge } from "@/components/ui";
 import { apiGet, type Appointment, type Lead, type Metrics } from "@/lib/api";
-import { INTENT_LABEL, STATUS_LABEL, STATUS_ORDER, compactBrl, dateTime, relativeTime } from "@/lib/format";
+import { INTENT_LABEL, STATUS_LABEL, STATUS_ORDER, compactBrl, dateTime, relativeTime, spaceLabel } from "@/lib/format";
 
 const REFRESH_MS = 10_000;
 const FILTERS = {
@@ -20,7 +20,8 @@ type FilterKey = keyof typeof FILTERS;
 function need(lead: Lead): string {
   if (lead.intent === "investimento") return lead.ticket ? `ticket ${compactBrl(lead.ticket)}` : "investidor";
   const parts = [
-    lead.property_type,
+    lead.business_activity ?? lead.property_type,
+    spaceLabel(lead),
     lead.bedrooms ? `${lead.bedrooms}+ qtos` : null,
     lead.regions[0],
     lead.budget_max ? `até ${compactBrl(lead.budget_max)}` : null,
@@ -188,6 +189,7 @@ export function Dashboard() {
                       <Link href={`/dashboard/leads/${lead.id}`} className="font-medium text-ink hover:text-brand">
                         {lead.name ?? "Sem nome"}
                       </Link>
+                      {lead.company && <p className="text-xs text-ink-2">{lead.company}</p>}
                       {lead.next_followup_at && (
                         <p className="flex items-center gap-1 text-[11px] text-muted">
                           <BellRing aria-hidden size={10} /> follow-up {relativeTime(lead.next_followup_at)}

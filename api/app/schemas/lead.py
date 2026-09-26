@@ -41,6 +41,15 @@ class LeadOut(BaseModel):
     phone: str | None
     email: str | None
     channel: str
+    segment: str
+    company: str | None
+    job_title: str | None
+    decision_maker: str | None
+    business_activity: str | None
+    area_min: int | None
+    area_max: int | None
+    headcount: int | None
+    requirements: list[str]
     intent: str
     property_type: str | None
     budget_min: int | None

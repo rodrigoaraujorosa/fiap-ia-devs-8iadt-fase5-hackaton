@@ -14,9 +14,13 @@ async function apiOnline() {
 
 const FEATURES = [
   { icon: MessagesSquare, title: "Atendimento na hora", text: "Conversa humanizada, 24/7, uma pergunta por vez." },
-  { icon: Target, title: "Qualificação", text: "Identifica compra, aluguel ou investimento e calcula um score." },
+  {
+    icon: Target,
+    title: "Qualificação B2B",
+    text: "Entende a empresa, a atividade, o espaço, o orçamento, quem decide e o prazo, e calcula um score.",
+  },
   { icon: SearchCheck, title: "Imóveis certos", text: "Busca híbrida (semântica + texto) na base da imobiliária." },
-  { icon: CalendarCheck, title: "Agendamento", text: "Marca visitas e reuniões na agenda do corretor da região." },
+  { icon: CalendarCheck, title: "Agendamento", text: "Marca visitas e reuniões com o corretor especialista no tipo de imóvel." },
   {
     icon: FileText,
     title: "Resumo para o corretor",
@@ -37,8 +41,9 @@ export default async function Home() {
           Nenhum lead sem resposta. Todo corretor com o cliente certo.
         </h1>
         <p className="text-lg text-ink-2">
-          A Laris é uma SDR com IA generativa: atende leads imobiliários na hora, qualifica, mostra imóveis, agenda
-          visitas e envia ao corretor, por e-mail, um resumo pronto com o convite da visita.
+          A Laris é uma SDR com IA generativa para imóveis comerciais: atende empresas e investidores na hora,
+          qualifica, mostra salas, lojas, galpões e lajes, agenda visitas e envia ao corretor, por e-mail, um resumo
+          pronto com o convite da visita.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/chat" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-ink">

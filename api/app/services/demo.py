@@ -44,11 +44,13 @@ def _clear(db: Session) -> int:
 def _book(db: Session, lead: Lead, spec: dict, brokers: dict[str, Broker]) -> Appointment:
     day = _business_days(datetime.now(tz()).date(), spec["business_days_ahead"])[-1]
     target = datetime.combine(day, time(spec["hour"]), tzinfo=tz())
-    slot = db.scalar(
+    free = db.scalars(
         select(Slot)
         .where(Slot.broker_id == brokers[spec["broker"]].id, Slot.is_booked.is_(False), Slot.start_at >= target)
         .order_by(Slot.start_at)
-    )
+    ).all()
+    morning = spec["hour"] < 12  # respeita o período pedido na conversa (manhã ou tarde)
+    slot = next((s for s in free if (s.start_at.astimezone(tz()).hour < 12) == morning), free[0])
     return book(db, lead, slot.id, spec["kind"], spec.get("property_id"), spec.get("notes"))
 
 

@@ -3,9 +3,24 @@ const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001
 export const API_URL =
   typeof window === "undefined" ? (process.env.INTERNAL_API_URL ?? PUBLIC_API_URL) : PUBLIC_API_URL;
 
+/** Atributos comerciais (features): atividades permitidas, andar, pé-direito, docas, locação vigente... */
+export type PropertyFeatures = {
+  atividades?: string[];
+  andar?: number;
+  pe_direito_m?: number;
+  docas?: number;
+  piso_carga_ton_m2?: number;
+  acesso?: string;
+  fachada_m?: number;
+  andares?: number;
+  elevadores?: number;
+  locado?: { inquilino: string; contrato_ate: number; aluguel_atual: number };
+};
+
 export type Property = {
   id: string;
   title: string;
+  segment: "comercial" | "residencial";
   property_type: string;
   purpose: "venda" | "aluguel";
   neighborhood: string;
@@ -21,6 +36,7 @@ export type Property = {
   area_m2: number;
   description: string;
   amenities: string[];
+  features: PropertyFeatures;
   furnished: boolean;
   pet_friendly: boolean;
   accepts_financing: boolean;
@@ -36,6 +52,15 @@ export type Lead = {
   phone: string | null;
   email: string | null;
   channel: string;
+  segment: "comercial" | "residencial" | "indefinido";
+  company: string | null;
+  job_title: string | null;
+  decision_maker: "sim" | "compartilhada" | "nao" | null;
+  business_activity: string | null;
+  area_min: number | null;
+  area_max: number | null;
+  headcount: number | null;
+  requirements: string[];
   intent: string;
   property_type: string | null;
   budget_min: number | null;

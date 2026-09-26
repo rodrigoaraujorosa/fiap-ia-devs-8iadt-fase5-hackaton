@@ -19,6 +19,15 @@ class Lead(Base):
     channel: Mapped[str] = mapped_column(String(20), default=Channel.WEB)
 
     # Qualificação (preenchida pelo agente extrator)
+    segment: Mapped[str] = mapped_column(String(20), default="indefinido")  # comercial | residencial
+    company: Mapped[str | None] = mapped_column(String(160))  # B2B: empresa do lead
+    job_title: Mapped[str | None] = mapped_column(String(80))  # cargo/papel (sócio, gerente de facilities...)
+    decision_maker: Mapped[str | None] = mapped_column(String(20))  # sim | compartilhada | nao
+    business_activity: Mapped[str | None] = mapped_column(String(120))  # clínica, escritório, restaurante...
+    area_min: Mapped[int | None] = mapped_column(Integer)  # m²
+    area_max: Mapped[int | None] = mapped_column(Integer)
+    headcount: Mapped[int | None] = mapped_column(Integer)  # nº de pessoas/postos de trabalho
+    requirements: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)  # vagas, docas, fachada...
     intent: Mapped[str] = mapped_column(String(20), default=Intent.INDEFINIDO, index=True)
     property_type: Mapped[str | None] = mapped_column(String(40))
     budget_min: Mapped[int | None] = mapped_column(Integer)

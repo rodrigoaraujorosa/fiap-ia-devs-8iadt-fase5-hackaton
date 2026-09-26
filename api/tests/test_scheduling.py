@@ -26,12 +26,18 @@ def scheduling_appointments(db, lead):
     return db.scalars(select(Appointment).where(Appointment.lead_id == lead.id)).all()
 
 
-def test_pick_brokers_by_zone_and_role(db, lead):
-    brokers = scheduling.pick_brokers(db, lead, "visita")
-    assert brokers and all("zona sul" in b.zones and b.role == BrokerRole.CORRETOR for b in brokers)
+def test_pick_brokers_by_specialty_and_role(db, lead):
+    """Comercial: o corretor é escolhido pela especialidade (tipo de imóvel); investidor vai para o especialista."""
+    lead.property_type = "galpão"
+    assert [b.name for b in scheduling.pick_brokers(db, lead, "visita")] == ["Paulo Nogueira"]
 
-    lead.regions = ["Pinheiros"]  # bairro → zona oeste
-    assert all("zona oeste" in b.zones for b in scheduling.pick_brokers(db, lead, "visita"))
+    loja = scheduling.pick_brokers(db, lead, "visita", property_id="IMV-060")  # o imóvel escolhido manda
+    assert all("loja" in b.specialties for b in loja)
+
+    lead.property_type = "escritório"  # sinônimo: sala, conjunto ou laje
+    office = scheduling.pick_brokers(db, lead, "visita")
+    assert office and all(b.role == BrokerRole.CORRETOR for b in office)
+    assert all({"sala comercial", "conjunto comercial", "laje corporativa"} & set(b.specialties) for b in office)
 
     lead.intent = "investimento"
     specialists = scheduling.pick_brokers(db, lead, "reuniao")

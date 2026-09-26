@@ -4,31 +4,44 @@
     "email": "mariana.costa@imobiq.example",
     "phone": "+55 11 90000-0001",
     "role": "corretor",
-    "zones": ["zona sul"],
-    "bio": "Corretora há 8 anos, especialista em apartamentos na zona sul (Moema, Vila Mariana, Brooklin)."
+    "zones": [],
+    "specialties": ["laje corporativa", "conjunto comercial", "prédio comercial"],
+    "bio": "Especialista em escritórios corporativos: lajes, conjuntos e prédios inteiros na Faria Lima, Paulista, Berrini e Alphaville."
   },
   {
     "name": "Rafael Almeida",
     "email": "rafael.almeida@imobiq.example",
     "phone": "+55 11 90000-0002",
     "role": "corretor",
-    "zones": ["zona oeste", "centro"],
-    "bio": "Atende Pinheiros, Vila Madalena, Perdizes e região central; foco em compra e locação."
+    "zones": [],
+    "specialties": ["sala comercial", "conjunto comercial"],
+    "bio": "Atende profissionais liberais e pequenas empresas: salas comerciais, consultórios e clínicas."
   },
   {
     "name": "Juliana Pereira",
     "email": "juliana.pereira@imobiq.example",
     "phone": "+55 11 90000-0003",
     "role": "corretor",
-    "zones": ["zona norte", "zona leste"],
-    "bio": "Especialista em primeiro imóvel e financiamento nas zonas norte e leste."
+    "zones": [],
+    "specialties": ["loja"],
+    "bio": "Especialista em lojas de rua e pontos comerciais para varejo, alimentação e serviços."
+  },
+  {
+    "name": "Paulo Nogueira",
+    "email": "paulo.nogueira@imobiq.example",
+    "phone": "+55 11 90000-0004",
+    "role": "corretor",
+    "zones": [],
+    "specialties": ["galpão"],
+    "bio": "Galpões logísticos e industriais em São Paulo e região metropolitana (Guarulhos, Cajamar, Osasco)."
   },
   {
     "name": "Carlos Menezes",
     "email": "carlos.menezes@imobiq.example",
-    "phone": "+55 11 90000-0004",
+    "phone": "+55 11 90000-0005",
     "role": "especialista_investimento",
-    "zones": ["zona sul", "zona oeste", "zona norte", "zona leste", "centro"],
-    "bio": "Consultor de investimentos imobiliários: renda com aluguel, studios, salas comerciais e análise de rentabilidade."
+    "zones": [],
+    "specialties": ["sala comercial", "conjunto comercial", "laje corporativa", "loja", "galpão", "prédio comercial"],
+    "bio": "Especialista em imóveis comerciais para renda: imóveis locados, cap rate, contratos e garantias."
   }
 ]

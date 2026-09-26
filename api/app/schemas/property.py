@@ -2,19 +2,35 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class PropertySearchParams(BaseModel):
-    """Filtros de busca — também serão os argumentos da tool `buscar_imoveis` do agente."""
+    """Filtros de busca — também são os argumentos da tool `buscar_imoveis` do agente."""
 
     query: str | None = Field(None, description="Descrição livre do que o cliente procura (busca semântica)")
     purpose: str | None = Field(None, description="'venda' ou 'aluguel'")
-    property_type: str | None = Field(None, description="apartamento, casa, studio, cobertura, sala comercial")
-    zones: list[str] | None = Field(None, description="Ex.: ['zona sul', 'zona oeste']")
-    neighborhoods: list[str] | None = Field(None, description="Ex.: ['Moema', 'Vila Mariana']")
+    segment: str | None = Field(None, description="'comercial' ou 'residencial'")
+    property_type: str | None = Field(
+        None,
+        description="Comercial: sala comercial, conjunto comercial, laje corporativa, loja, galpão, prédio comercial "
+        "(sinônimos como 'escritório', 'ponto', 'depósito' também funcionam). Residencial: apartamento, casa, studio",
+    )
+    zones: list[str] | None = Field(None, description="Ex.: ['zona sul', 'zona oeste', 'centro', 'grande sp']")
+    neighborhoods: list[str] | None = Field(None, description="Ex.: ['Itaim Bibi', 'Vila Olímpia']")
     min_price: int | None = None
     max_price: int | None = None
-    min_bedrooms: int | None = None
-    pet_friendly: bool | None = None
-    furnished: bool | None = None
+    min_area: int | None = Field(None, description="Área mínima em m²")
+    max_area: int | None = Field(None, description="Área máxima em m²")
+    min_parking: int | None = Field(None, description="Vagas de garagem mínimas")
+    activity: str | None = Field(
+        None,
+        description="Atividade que o imóvel precisa permitir: escritório, consultório, clínica, coworking, varejo, "
+        "alimentação, serviços, showroom, logística, armazenagem, e-commerce, indústria leve, educação",
+    )
+    min_docks: int | None = Field(None, description="Galpões: docas mínimas")
+    min_ceiling_height: float | None = Field(None, description="Pé-direito mínimo em metros (galpões e lojas)")
+    leased: bool | None = Field(None, description="True: só imóveis à venda já locados (renda imediata p/ investidor)")
+    furnished: bool | None = Field(None, description="Mobiliado/pronto para uso")
     min_yield: float | None = Field(None, description="Rentabilidade mínima estimada (% a.a.)")
+    min_bedrooms: int | None = Field(None, description="Só residencial: quartos mínimos")
+    pet_friendly: bool | None = Field(None, description="Só residencial")
     limit: int = Field(5, ge=1, le=20)
 
 
@@ -23,6 +39,7 @@ class PropertyOut(BaseModel):
 
     id: str
     title: str
+    segment: str
     property_type: str
     purpose: str
     neighborhood: str
@@ -38,6 +55,7 @@ class PropertyOut(BaseModel):
     area_m2: int
     description: str
     amenities: list[str]
+    features: dict
     furnished: bool
     pet_friendly: bool
     accepts_financing: bool

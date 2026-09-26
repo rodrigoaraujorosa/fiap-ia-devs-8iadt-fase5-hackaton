@@ -32,8 +32,11 @@ sem palavras em inglês.
 
 class BrokerSummary(BaseModel):
     resumo: str = Field(description="2 a 4 frases: quem é o cliente, o que busca, momento e urgência")
-    perfil: str = Field(description="Perfil em uma linha (ex.: 'Família com 2 filhos, 1º imóvel, financiamento')")
-    necessidades: list[str] = Field(description="Critérios do imóvel: região, faixa de preço, quartos, extras")
+    perfil: str = Field(
+        description="Perfil em uma linha: empresa, atividade, quem decide (ex.: 'Clínica odontológica, sócia decide "
+        "com o marido, expansão')"
+    )
+    necessidades: list[str] = Field(description="Critérios do imóvel: atividade, área, região, orçamento, requisitos")
     imoveis_de_interesse: list[str] = Field(description="Códigos dos imóveis que o cliente viu ou gostou (IMV-...)")
     objecoes_e_duvidas: list[str] = Field(description="Objeções, dúvidas ou receios que apareceram; [] se nenhum")
     proximos_passos: list[str] = Field(description="Ações recomendadas para o corretor, em ordem")
@@ -56,10 +59,11 @@ def _render(summary: BrokerSummary, lead: Lead) -> str:
 
 
 def _crm_snapshot(db: Session, lead: Lead) -> dict:
-    fields = ["name", "phone", "intent", "property_type", "budget_min", "budget_max", "bedrooms", "regions",
-              "urgency", "timeline", "financing", "investor_profile", "ticket", "expected_return", "score",
-              "temperature", "status"]  # fmt: skip
-    data = {f: getattr(lead, f) for f in fields if getattr(lead, f) not in (None, [], "")}
+    fields = ["name", "phone", "company", "job_title", "decision_maker", "segment", "business_activity", "intent",
+              "property_type", "area_min", "area_max", "headcount", "requirements", "budget_min", "budget_max",
+              "bedrooms", "regions", "urgency", "timeline", "financing", "investor_profile", "ticket",
+              "expected_return", "score", "temperature", "status"]  # fmt: skip
+    data = {f: getattr(lead, f) for f in fields if getattr(lead, f) not in (None, [], "", 0, "indefinido")}
     data.update(lead.extra or {})
     if appt := upcoming_appointment(db, lead.id):
         data["agendamento"] = f"{appt.kind} com {appt.broker.name} em {format_slot(appt.slot.start_at)}"

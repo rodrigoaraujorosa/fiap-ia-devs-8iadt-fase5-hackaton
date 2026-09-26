@@ -27,7 +27,7 @@ export const INTENT_LABEL: Record<string, string> = {
 };
 
 export const AGENT_LABEL: Record<string, string> = {
-  compra_aluguel: "Especialista em compra e aluguel",
+  compra_aluguel: "Especialista em locação e compra",
   investimento: "Especialista em investimentos",
   agendamento: "Agente de agendamento",
   follow_up: "Follow-up automático",
@@ -36,6 +36,10 @@ export const AGENT_LABEL: Record<string, string> = {
 export const FIELD_LABEL: Record<string, string> = {
   intent: "Objetivo",
   name: "Nome",
+  company: "Empresa",
+  decision_maker: "Quem decide",
+  business_activity: "Atividade",
+  space: "Tamanho do espaço",
   regions: "Região",
   budget_max: "Faixa de preço",
   bedrooms: "Quartos",
@@ -77,3 +81,24 @@ export const dateTime = (iso: string) =>
 
 export const clockTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+
+export const DECISION_LABEL: Record<string, string> = {
+  sim: "Decide sozinho(a)",
+  compartilhada: "Decide com sócios/diretoria",
+  nao: "Não decide (pesquisa para outra pessoa)",
+};
+
+/** Tamanho do espaço pedido: faixa de m² e/ou nº de pessoas. */
+export function spaceLabel(lead: { area_min: number | null; area_max: number | null; headcount: number | null }) {
+  const area =
+    lead.area_min && lead.area_max
+      ? `${lead.area_min}–${lead.area_max} m²`
+      : lead.area_min
+        ? `a partir de ${lead.area_min} m²`
+        : lead.area_max
+          ? `até ${lead.area_max} m²`
+          : null;
+  const people = lead.headcount ? `${lead.headcount} pessoas` : null;
+  return [area, people].filter(Boolean).join(" · ") || null;
+}
+

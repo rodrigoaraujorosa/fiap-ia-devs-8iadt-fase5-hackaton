@@ -41,17 +41,17 @@ type UiMessage = {
 
 export const CHAT_STORAGE_KEY = "imobiq:lead_id";
 const WELCOME =
-  "Oi! Eu sou a Laris, da ImobiQ 😊 Posso te ajudar a comprar, alugar ou investir em um imóvel em São Paulo. Me conta o que você procura?";
+  "Oi! Eu sou a Laris, da ImobiQ 😊 Posso te ajudar a encontrar um espaço para a sua empresa (sala, escritório, loja, galpão) ou um imóvel comercial para investir. Me conta o que você procura?";
 const SUGGESTIONS = [
-  "Estou procurando apartamento na zona sul.",
-  "Quero investir em imóveis para renda.",
-  "Quero alugar um studio perto da Paulista.",
+  "Procuro uma sala para a minha clínica na zona sul.",
+  "Quero investir em imóveis comerciais para renda.",
+  "Preciso de um galpão perto da Via Dutra.",
 ];
 const POLL_MS = 5000;
 
 function embedWelcome(brand: string, property: Property | null): string {
   if (!property) {
-    return `Oi! Eu sou a Laris, assistente virtual da ${brand} 😊 Posso te ajudar a comprar, alugar ou investir em um imóvel. Me conta o que você procura?`;
+    return `Oi! Eu sou a Laris, assistente virtual da ${brand} 😊 Posso te ajudar a encontrar um espaço para a sua empresa ou um imóvel comercial para investir. Me conta o que você procura?`;
   }
   const price = property.purpose === "aluguel" ? `${brl(property.price)}/mês` : brl(property.price);
   return `Oi! Eu sou a Laris, assistente virtual da ${brand} 😊 Vi que você está olhando o ${property.title} (${price}). Quer saber mais sobre ele, ver opções parecidas ou agendar uma visita?`;

@@ -10,7 +10,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![AWS](https://img.shields.io/badge/Deploy-AWS-FF9900?logo=amazonwebservices&logoColor=white)
 
-POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)**: um agente SDR que atende leads imobiliários, conversa de forma humanizada, qualifica (compra, aluguel ou investimento), sugere imóveis de uma base simulada, agenda visitas, faz follow-up automático e gera resumos para corretores.
+POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · Grupo 65: um agente SDR para **imóveis comerciais** que atende empresas e investidores, conversa de forma humanizada, faz a qualificação B2B (atividade, espaço, orçamento, quem decide e prazo), sugere salas, conjuntos, lajes, lojas, galpões e prédios de uma base simulada, agenda visitas com o corretor especialista, faz follow-up automático e envia resumos aos corretores. O código também suporta imóveis residenciais (campo de segmento).
 
 > 🚧 Documentação completa (arquitetura, explicação da IA, demo e pitch) será finalizada ao longo do desenvolvimento.
 
@@ -45,8 +45,8 @@ flowchart LR
     J[[Job de follow-up<br/>APScheduler]] -->|lead sem resposta| F[Mensagem contextual<br/>cadência 2N, 4N...]
 ```
 
-- **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada (intenção, orçamento, região, quartos, urgência, perfil investidor...). Regras determinísticas calculam campos faltantes, score (0-100), temperatura e etapa do funil, e escolhem o agente que responde. O perfil registra só o que o cliente disse: a finalidade (compra, aluguel ou investimento) exige um trecho citado literalmente da mensagem do cliente, conferido pelo código, e a busca de imóveis fica travada até ela ser declarada. O telefone é pedido ao agendar ou encaminhar, uma única vez.
-- **Agentes (Sonnet):** persona humanizada ("Laris"), uma pergunta por vez, guiada pela lista de campos faltantes. *Compra e Aluguel* e *Investimentos* qualificam e sugerem imóveis; *Agendamento* consulta a agenda do corretor certo (por zona, ou o especialista em investimentos) e confirma visitas e reuniões.
+- **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada: segmento, empresa, cargo, se é o decisor, atividade, área ou nº de pessoas, requisitos, orçamento, região, urgência e perfil de investidor (no residencial, quartos). Regras determinísticas calculam campos faltantes (no comercial, seguindo o BANT: necessidade, orçamento, autoridade e prazo), score (0-100), temperatura e etapa do funil, e escolhem o agente que responde. O perfil registra só o que o cliente disse: a finalidade (compra, aluguel ou investimento) exige um trecho citado literalmente da mensagem do cliente, conferido pelo código, e a busca de imóveis fica travada até ela ser declarada. O telefone é pedido ao agendar ou encaminhar, uma única vez.
+- **Agentes (Sonnet):** persona humanizada ("Laris"), uma pergunta por vez, guiada pela lista de campos faltantes. *Locação e Compra* e *Investimentos* (imóveis locados, cap rate) qualificam e sugerem imóveis; *Agendamento* consulta a agenda do corretor especialista no tipo de imóvel (escritórios, salas e consultórios, lojas, galpões, ou o especialista em investimentos) e confirma visitas e reuniões. A busca entende a linguagem do cliente ("escritório", "ponto", "depósito", "Faria Lima", "Augusta") e filtra por atividade permitida, área, vagas, docas e pé-direito.
 - **Resumo inteligente:** ao agendar ou encaminhar, o corretor recebe um briefing estruturado (perfil, necessidades, imóveis de interesse, objeções, próximos passos, abordagem sugerida) **por e-mail**, com o convite de calendário (.ics) da visita anexado. No modo demonstração, todos os e-mails vão para uma única caixa, com o corretor de destino no assunto.
 - **Follow-up automático:** um job reserva leads sem resposta (`FOR UPDATE SKIP LOCKED`, seguro com várias instâncias) e envia mensagens com o contexto da conversa. Cada tentativa usa uma estratégia (retomar, agregar valor, encerrar), com cadência crescente; depois da última, o lead vai para *perdido*. Se ele voltar, a conversa continua de onde parou. O envio pode ser pausado, ter a cadência ajustada ou um horário de silêncio definido em tempo real na tela de configurações.
 - **Memória:** o histórico completo (inclusive ferramentas e follow-ups) é o estado do grafo LangGraph, persistido no Postgres pelo checkpointer. A conversa continua mesmo após reiniciar a API.
@@ -111,7 +111,7 @@ No WordPress, a linha do script pode ser colocada com um plugin de inserção de
 api/    FastAPI + agentes (app/), migrations (alembic/), seed (scripts/), testes (tests/)
 web/    Next.js — chat do lead, dashboard do corretor, configurações e o widget (public/widget.js)
 site-exemplo/  gerador do site fictício da "Imobiliária Exemplo", com o widget embutido
-data/   base simulada: 100 imóveis em SP (gerador determinístico), corretores e leads de demonstração
+data/   base simulada: 100 imóveis comerciais em SP e região (gerador determinístico), corretores por especialidade e leads de demonstração
 docs/   arquitetura, explicação da IA e pitch
 ```
 

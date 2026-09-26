@@ -55,12 +55,22 @@ preferência de região, use ["sem preferência"]. Nunca remova a região pedida
 cliente desista dela. Normalize zonas como "zona sul", "zona oeste", "zona norte", "zona leste", "centro"; \
 mantenha bairros com o nome próprio (ex.: "Moema").
 - intent: só com base no que o cliente declarou. "investimento" quando o objetivo é renda ou valorização (mesmo \
-que vá comprar); "compra" para morar; "aluguel" para alugar para si. Se ele ainda não disse se quer comprar, \
+que vá comprar); "compra" para uso próprio (sede da empresa, loja própria, moradia); "aluguel" para alugar para \
+uso próprio (da empresa ou para morar). Se ele ainda não disse se quer comprar, \
 alugar ou investir, use "indefinido" — nunca deduza pela faixa de valor ("até 2 mil" não significa aluguel) \
 nem por ele ter gostado de imóveis que a SDR buscou.
 - intent_evidence: copie letra por letra o trecho do cliente que declara a finalidade; sem ele, o intent \
 é descartado.
 - phone: telefone ou WhatsApp que o cliente digitou. declined_phone "sim" só se a SDR pediu e ele recusou.
+- segment: "comercial" quando o imóvel é para empresa, negócio, atividade profissional (clínica, loja, escritório, \
+galpão) ou para investir em imóvel comercial; "residencial" quando é para morar.
+- Empresa (B2B): company só com o nome que o cliente deu; job_title com o cargo/papel que ele citou. \
+decision_maker só se ele indicou: "sou o dono", "sou sócio e decido" → "sim"; "vou levar para os sócios/diretoria" \
+→ "compartilhada"; "estou pesquisando para meu chefe" → "nao".
+- business_activity: o que vai funcionar no imóvel, nas palavras do cliente (ex.: "clínica odontológica").
+- area_min/area_max só com metragem que o cliente disse ("uns 200 m²" → area_min 200). Nunca calcule área a \
+partir do número de pessoas; registre as pessoas em headcount ("somos 30 pessoas" → headcount 30).
+- requirements: requisitos que o cliente pediu (vagas, docas, pé-direito, fachada, metrô, ar-condicionado...).
 - urgency: calcule pelo prazo em relação à data de hoje (até 1 mês = alta; 1 a 6 meses = media; mais que isso \
 ou sem prazo = baixa). "desconhecida" se o cliente ainda não falou de prazo.
 - route (quem responde a última mensagem do cliente):

@@ -16,16 +16,66 @@ from app.models import Property
 from app.schemas.property import PropertySearchParams, PropertySearchResult
 
 RRF_K = 60  # constante padrão do RRF
-# Tipos equivalentes na linguagem do cliente: quem pede "apartamento" também aceita studio e cobertura
+# Atividades que os imóveis comerciais declaram permitir (features.atividades)
+ACTIVITIES = ["escritório", "consultório", "clínica", "coworking", "varejo", "alimentação", "serviços", "showroom",
+              "logística", "armazenagem", "e-commerce", "indústria leve", "educação"]  # fmt: skip
+# Ruas e eixos que o cliente cita como se fossem bairros → bairros da base
+NEIGHBORHOOD_ALIASES = {
+    "augusta": ["Consolação"],
+    "rua augusta": ["Consolação"],
+    "oscar freire": ["Jardins"],
+    "rua oscar freire": ["Jardins"],
+    "jardim paulista": ["Jardins"],
+    "faria lima": ["Itaim Bibi", "Pinheiros"],
+    "av faria lima": ["Itaim Bibi", "Pinheiros"],
+    "berrini": ["Brooklin"],
+    "paulista": ["Bela Vista", "Paraíso"],
+    "av paulista": ["Bela Vista", "Paraíso"],
+    "avenida paulista": ["Bela Vista", "Paraíso"],
+    "25 de marco": ["Sé"],
+    "rua 25 de marco": ["Sé"],
+    "centro": ["República", "Sé"],
+    "centro historico": ["República", "Sé"],
+    "itaim": ["Itaim Bibi"],
+    "dutra": ["Guarulhos"],
+    "via dutra": ["Guarulhos"],
+    "anhanguera": ["Cajamar"],
+}
+
+
+def _expand_neighborhoods(names: list[str]) -> list[str]:
+    expanded = []
+    for name in names:
+        key = _normalize(name).replace(".", "")
+        expanded += NEIGHBORHOOD_ALIASES.get(key, [name])
+    return [_normalize(n) for n in expanded]
+
+
+# Tipos equivalentes na linguagem do cliente (quem pede "escritório" aceita sala, conjunto ou laje)
+OFFICE = ["sala comercial", "conjunto comercial", "laje corporativa"]
 TYPE_SYNONYMS = {
+    "escritorio": OFFICE,
+    "sala": ["sala comercial", "conjunto comercial"],
+    "consultorio": ["sala comercial"],
+    "conjunto": ["conjunto comercial"],
+    "laje": ["laje corporativa"],
+    "andar corporativo": ["laje corporativa"],
+    "ponto": ["loja"],
+    "ponto comercial": ["loja"],
+    "loja de rua": ["loja"],
+    "galpao": ["galpão"],
+    "deposito": ["galpão"],
+    "armazem": ["galpão"],
+    "centro de distribuicao": ["galpão"],
+    "predio": ["prédio comercial"],
+    "predio comercial": ["prédio comercial"],
+    "edificio": ["prédio comercial"],
+    # residencial (compatibilidade)
     "apartamento": ["apartamento", "studio", "cobertura"],
     "ape": ["apartamento", "studio", "cobertura"],
     "kitnet": ["studio"],
-    "kitnete": ["studio"],
-    "quitinete": ["studio"],
     "estudio": ["studio"],
     "loft": ["studio"],
-    "sala": ["sala comercial"],
 }
 MAX_CANDIDATES = 200
 
@@ -48,6 +98,7 @@ def _document_tsv():
         Property.property_type,
         Property.description,
         func.array_to_string(Property.amenities, " "),
+        cast(Property.features, String),
     )
     return func.to_tsvector("portuguese", doc)
 
@@ -62,17 +113,37 @@ def _apply_filters(stmt, params: PropertySearchParams):
     stmt = stmt.where(Property.available.is_(True))
     if params.purpose:
         stmt = stmt.where(Property.purpose == _normalize(params.purpose))
+    if params.segment:
+        stmt = stmt.where(Property.segment == _normalize(params.segment))
     if params.property_type:
         wanted = _normalize(params.property_type)
-        stmt = stmt.where(_unaccent_lower(Property.property_type).in_(TYPE_SYNONYMS.get(wanted, [wanted])))
+        types = [_normalize(t) for t in TYPE_SYNONYMS.get(wanted, [wanted])]
+        stmt = stmt.where(_unaccent_lower(Property.property_type).in_(types))
     if params.zones:
         stmt = stmt.where(_unaccent_lower(Property.zone).in_([_normalize(z) for z in params.zones]))
     if params.neighborhoods:
-        stmt = stmt.where(_unaccent_lower(Property.neighborhood).in_([_normalize(n) for n in params.neighborhoods]))
+        stmt = stmt.where(_unaccent_lower(Property.neighborhood).in_(_expand_neighborhoods(params.neighborhoods)))
     if params.min_price is not None:
         stmt = stmt.where(Property.price >= params.min_price)
     if params.max_price is not None:
         stmt = stmt.where(Property.price <= params.max_price)
+    if params.min_area is not None:
+        stmt = stmt.where(Property.area_m2 >= params.min_area)
+    if params.max_area is not None:
+        stmt = stmt.where(Property.area_m2 <= params.max_area)
+    if params.min_parking is not None:
+        stmt = stmt.where(Property.parking >= params.min_parking)
+    if params.activity:
+        canonical = {_normalize(x): x for x in ACTIVITIES}
+        activity = canonical.get(_normalize(params.activity), params.activity.strip().lower())
+        stmt = stmt.where(Property.features["atividades"].contains([activity]))
+    if params.min_docks is not None:
+        stmt = stmt.where(Property.features["docas"].as_integer() >= params.min_docks)
+    if params.min_ceiling_height is not None:
+        stmt = stmt.where(Property.features["pe_direito_m"].as_float() >= params.min_ceiling_height)
+    if params.leased is not None:
+        has_tenant = Property.features.has_key("locado")
+        stmt = stmt.where(has_tenant if params.leased else ~has_tenant)
     if params.min_bedrooms is not None:
         stmt = stmt.where(Property.bedrooms >= params.min_bedrooms)
     if params.pet_friendly is not None:

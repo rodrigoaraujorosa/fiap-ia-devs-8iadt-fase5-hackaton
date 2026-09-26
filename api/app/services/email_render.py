@@ -92,10 +92,25 @@ def _appointment_pairs(appointment: Appointment, prop: Property | None) -> list[
     return pairs
 
 
+DECISION = {
+    "sim": "Sim, decide",
+    "compartilhada": "Decide com sócios/diretoria",
+    "nao": "Não (pesquisa para outra pessoa)",
+}
+
+
 def _lead_pairs(lead: Lead) -> list[tuple[str, str]]:
-    return [
+    pairs = [
         ("Nome", lead.name or "Não informado"),
         ("Telefone", lead.phone or "Não informado"),
+    ]
+    if lead.company:
+        pairs.append(("Empresa", lead.company + (f" · {lead.job_title}" if lead.job_title else "")))
+    if lead.decision_maker:
+        pairs.append(("Decisor", DECISION.get(lead.decision_maker, lead.decision_maker)))
+    if lead.business_activity:
+        pairs.append(("Atividade", lead.business_activity))
+    return pairs + [
         ("Intenção", INTENT.get(lead.intent, lead.intent)),
         ("Temperatura", f"{TEMPERATURE.get(lead.temperature, lead.temperature)} ({lead.score}/100)"),
         ("Canal", CHANNEL.get(lead.channel, lead.channel)),

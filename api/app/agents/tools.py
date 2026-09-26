@@ -109,6 +109,7 @@ TOOLSETS: dict[str, list[dict[str, Any]]] = {
 
 
 def _brief(p: PropertyOut) -> dict:
+    """Resumo do imóvel que volta para o modelo (campos do segmento; sem ruído de campos vazios)."""
     data = {
         "id": p.id,
         "titulo": p.title,
@@ -116,19 +117,26 @@ def _brief(p: PropertyOut) -> dict:
         "finalidade": p.purpose,
         "bairro": p.neighborhood,
         "zona": p.zone,
+        "cidade": p.city,
         "preco": p.price,
-        "quartos": p.bedrooms,
-        "suites": p.suites,
-        "vagas": p.parking,
         "area_m2": p.area_m2,
-        "destaques": p.amenities[:4],
-        "pet": p.pet_friendly,
-        "mobiliado": p.furnished,
+        "vagas": p.parking,
+        "condominio": p.condo_fee,
+        "destaques": p.amenities[:5],
         "perto_metro": p.near_metro,
+        "mobiliado": p.furnished,
     }
+    if p.segment == "residencial":
+        data.update({"quartos": p.bedrooms, "suites": p.suites, "pet": p.pet_friendly})
+    f = p.features or {}
+    for key in ("atividades", "andar", "pe_direito_m", "docas", "piso_carga_ton_m2", "acesso", "fachada_m", "andares"):
+        if f.get(key):
+            data[key] = f[key]
+    if f.get("locado"):
+        data["locado"] = f["locado"]  # inquilino, contrato_ate, aluguel_atual
     if p.estimated_yield:
         data["rentabilidade_estimada_aa"] = p.estimated_yield
-    return data
+    return {k: v for k, v in data.items() if v not in (None, [], "")}
 
 
 def _buscar(ctx: ToolContext, raw: Any) -> ToolOutcome:

@@ -2,7 +2,7 @@ import { Bot, CalendarCheck, CircleDashed, CircleCheck } from "lucide-react";
 
 import { Card, ScoreMeter, StatusBadge, TemperatureBadge } from "@/components/ui";
 import type { Lead } from "@/lib/api";
-import { AGENT_LABEL, FIELD_LABEL, INTENT_LABEL, compactBrl } from "@/lib/format";
+import { AGENT_LABEL, DECISION_LABEL, FIELD_LABEL, INTENT_LABEL, compactBrl, spaceLabel } from "@/lib/format";
 
 export type Analysis = { route: string; missing: string[] };
 export type AppointmentInfo = { tipo: string; quando: string; com: string; imovel: string | null };
@@ -12,17 +12,22 @@ function profileRows(lead: Lead): [string, string][] {
   const rows: [string, string | null][] = [
     ["Nome", lead.name],
     ["Telefone", lead.phone ?? (lead.extra?.phone_declined ? "preferiu não informar" : null)],
+    ["Empresa", lead.company ? `${lead.company}${lead.job_title ? ` · ${lead.job_title}` : ""}` : null],
+    ["Quem decide", lead.decision_maker ? DECISION_LABEL[lead.decision_maker] : null],
     ["Objetivo", INTENT_LABEL[lead.intent] ?? lead.intent],
+    ["Atividade", lead.business_activity],
     ["Tipo", lead.property_type],
+    ["Espaço", spaceLabel(lead)],
     ["Região", lead.regions.length ? lead.regions.join(", ") : null],
     ["Orçamento", lead.budget_max ? `até ${money(lead.budget_max)}${lead.intent === "aluguel" ? "/mês" : ""}` : null],
+    ["Requisitos", lead.requirements?.length ? lead.requirements.join(", ") : null],
     ["Quartos", lead.bedrooms ? `${lead.bedrooms}+` : null],
     ["Urgência", lead.urgency ? `${lead.urgency}${lead.timeline ? ` (${lead.timeline})` : ""}` : null],
     ["Pagamento", lead.financing],
     ["Perfil investidor", lead.investor_profile],
     ["Ticket", money(lead.ticket)],
     ["Retorno esperado", lead.expected_return],
-    ["Preferências", lead.extra?.preferences ?? null],
+    ["Contexto", lead.extra?.preferences ?? null],
   ];
   return rows.filter((r): r is [string, string] => Boolean(r[1]) && r[1] !== "Indefinido");
 }
@@ -37,8 +42,8 @@ export function LeadPanel({ lead, analysis, agent, appointment }: {
     return (
       <Card title="O que a IA está entendendo">
         <p className="text-sm text-ink-2">
-          Assim que o lead escrever, este painel mostra em tempo real o que o supervisor extraiu da conversa: objetivo,
-          orçamento, região, urgência, score e o que ainda falta descobrir.
+          Assim que o lead escrever, este painel mostra em tempo real o que o supervisor extraiu da conversa: empresa,
+          atividade, espaço, orçamento, quem decide, prazo, score e o que ainda falta descobrir.
         </p>
       </Card>
     );

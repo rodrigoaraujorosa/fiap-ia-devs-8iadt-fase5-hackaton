@@ -40,7 +40,7 @@ def lead_zones(db: Session, lead: Lead, property_id: str | None = None) -> set[s
     if property_id and (prop := db.get(Property, property_id)):
         return {prop.zone}
     zones = set()
-    known_zones = {"zona sul", "zona oeste", "zona norte", "zona leste", "centro"}
+    known_zones = {"zona sul", "zona oeste", "zona norte", "zona leste", "centro", "grande sp"}
     for region in lead.regions or []:
         if _norm(region) in known_zones:
             zones.add(_norm(region))
@@ -53,14 +53,37 @@ def lead_zones(db: Session, lead: Lead, property_id: str | None = None) -> set[s
     return zones
 
 
+def wanted_types(db: Session, lead: Lead, property_id: str | None = None) -> set[str]:
+    """Tipos de imóvel em jogo: o do imóvel escolhido ou o que o lead pediu (com sinônimos, ex.: escritório)."""
+    from app.services.property_search import TYPE_SYNONYMS  # import tardio: evita ciclo
+
+    if property_id and (prop := db.get(Property, property_id)):
+        return {prop.property_type}
+    if not lead.property_type:
+        return set()
+    wanted = _norm(lead.property_type)
+    return set(TYPE_SYNONYMS.get(wanted, [lead.property_type.lower()]))
+
+
 def pick_brokers(db: Session, lead: Lead, kind: str, property_id: str | None = None) -> list[Broker]:
+    """Investidor → especialista em investimentos. Demais: corretor da especialidade (tipo de imóvel) e da zona."""
     brokers = db.scalars(select(Broker).where(Broker.active.is_(True))).all()
     if kind == AppointmentKind.REUNIAO and lead.intent == "investimento":
         return [b for b in brokers if b.role == BrokerRole.ESPECIALISTA_INVESTIMENTO]
     corretores = [b for b in brokers if b.role == BrokerRole.CORRETOR]
+    types = wanted_types(db, lead, property_id)
     zones = lead_zones(db, lead, property_id)
-    matching = [b for b in corretores if zones & set(b.zones)]
-    return matching or corretores
+
+    def serves_type(b: Broker) -> bool:
+        return bool(types & set(b.specialties or []))
+
+    def serves_zone(b: Broker) -> bool:
+        return not b.zones or bool(zones & set(b.zones))  # sem zonas cadastradas = atende a cidade toda
+
+    for rule in (lambda b: serves_type(b) and serves_zone(b), serves_type, serves_zone):
+        if matching := [b for b in corretores if rule(b)]:
+            return matching
+    return corretores
 
 
 def free_slots(

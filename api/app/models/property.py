@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import ARRAY, Boolean, DateTime, Float, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.config import get_settings
@@ -13,7 +14,8 @@ class Property(Base):
 
     id: Mapped[str] = mapped_column(String(20), primary_key=True)  # ex.: IMV-001
     title: Mapped[str] = mapped_column(String(200))
-    property_type: Mapped[str] = mapped_column(String(40), index=True)  # apartamento, casa, studio...
+    segment: Mapped[str] = mapped_column(String(20), default="comercial", index=True)  # comercial | residencial
+    property_type: Mapped[str] = mapped_column(String(40), index=True)  # sala comercial, loja, galpão... ou apartamento
     purpose: Mapped[str] = mapped_column(String(20), index=True)  # venda | aluguel
     neighborhood: Mapped[str] = mapped_column(String(80), index=True)
     zone: Mapped[str] = mapped_column(String(40), index=True)  # zona sul, zona oeste...
@@ -29,7 +31,9 @@ class Property(Base):
     area_m2: Mapped[int] = mapped_column(Integer)
 
     description: Mapped[str] = mapped_column(Text)
-    amenities: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    amenities: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)  # destaques (ex.: piso elevado)
+    # atributos comerciais: atividades permitidas, andar, pé-direito, docas, fachada, locado (inquilino, contrato)...
+    features: Mapped[dict] = mapped_column(JSONB, default=dict)
     furnished: Mapped[bool] = mapped_column(Boolean, default=False)
     pet_friendly: Mapped[bool] = mapped_column(Boolean, default=False)
     accepts_financing: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -42,16 +46,25 @@ class Property(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     def search_text(self) -> str:
-        """Texto usado para gerar o embedding (RAG)."""
+        """Texto usado para gerar o embedding e a busca textual (RAG)."""
         finalidade = "à venda" if self.purpose == "venda" else "para alugar"
+        f = self.features or {}
         extras = [
+            f"permite {', '.join(f['atividades'])}" if f.get("atividades") else None,
+            f"{f['andar']}º andar" if f.get("andar") else None,
+            f"pé-direito de {f['pe_direito_m']} m" if f.get("pe_direito_m") else None,
+            f"{f['docas']} docas" if f.get("docas") else None,
+            f"acesso pela {f['acesso']}" if f.get("acesso") else None,
+            f"{f['fachada_m']} m de fachada" if f.get("fachada_m") else None,
+            f"imóvel locado para {f['locado']['inquilino']} (renda)" if f.get("locado") else None,
+            f"{self.bedrooms} quartos" if self.bedrooms else None,
             "mobiliado" if self.furnished else None,
             "aceita pet" if self.pet_friendly else None,
             "próximo ao metrô" if self.near_metro else None,
+            f"{self.parking} vagas" if self.parking else None,
         ]
         return (
-            f"{self.title}. {self.property_type} {finalidade} em {self.neighborhood}, "
-            f"{self.zone}, {self.city}. {self.bedrooms} quartos, {self.area_m2} m². "
-            f"{self.description} Comodidades: {', '.join(self.amenities)}. "
+            f"{self.title}. {self.property_type} {finalidade} em {self.neighborhood}, {self.zone}, {self.city}. "
+            f"{self.area_m2} m². {self.description} Destaques: {', '.join(self.amenities)}. "
             f"{', '.join(e for e in extras if e)}"
         )

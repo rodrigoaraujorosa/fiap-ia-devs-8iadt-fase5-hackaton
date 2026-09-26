@@ -35,7 +35,31 @@ class LeadAnalysis(BaseModel):
         description="Objetivo que o CLIENTE declarou (comprar, alugar ou investir). 'indefinido' se ele ainda não "
         "disse: nunca deduza pela faixa de valor, pelo tipo de imóvel nem pelos imóveis que a SDR mostrou"
     )
-    property_type: str = Field(description="apartamento, casa, studio, cobertura, sala comercial, ou ''")
+    segment: Literal["comercial", "residencial", "indefinido"] = Field(
+        description="'comercial' se o imóvel é para empresa/negócio/atividade profissional ou investimento em imóvel "
+        "comercial; 'residencial' se é para morar; 'indefinido' se ainda não dá para saber"
+    )
+    company: str = Field(description="Nome da empresa do cliente, se ele disse, ou ''")
+    job_title: str = Field(description="Cargo ou papel do cliente (sócio, dono, gerente de facilities...), ou ''")
+    decision_maker: Literal["sim", "compartilhada", "nao", "nao_informado"] = Field(
+        description="'sim' se o cliente decide sozinho (dono, sócio-diretor); 'compartilhada' se decide com sócios, "
+        "diretoria ou conselho; 'nao' se só está pesquisando para outra pessoa; 'nao_informado' se não disse"
+    )
+    business_activity: str = Field(
+        description="O que vai funcionar no imóvel (ex.: clínica odontológica, escritório de advocacia, restaurante, "
+        "centro de distribuição), ou ''"
+    )
+    area_min: int = Field(description="Área mínima em m² que o cliente disse, ou 0 (não deduza pelo nº de pessoas)")
+    area_max: int = Field(description="Área máxima em m² que o cliente disse, ou 0")
+    headcount: int = Field(description="Quantas pessoas vão trabalhar/usar o espaço, se o cliente disse, ou 0")
+    requirements: list[str] = Field(
+        description="Requisitos do imóvel que o cliente pediu (ex.: 'vagas para clientes', 'docas', 'fachada', "
+        "'pé-direito alto', 'perto do metrô'); [] se nenhum"
+    )
+    property_type: str = Field(
+        description="sala comercial, conjunto comercial, laje corporativa, loja, galpão, prédio comercial, "
+        "escritório (se não especificou), ou residencial (apartamento, casa, studio), ou ''"
+    )
     budget_min: int = Field(
         description="Valor mínimo que o cliente disse (ex.: 'entre 1.500 e 2.000' → 1500), ou 0. 'Até X' → 0"
     )
@@ -59,8 +83,8 @@ class LeadAnalysis(BaseModel):
         description="'sim' se o cliente pediu ou aceitou visita/reunião; 'nao' se recusou"
     )
     notes: str = Field(
-        description="Resumo consolidado, em uma frase, de TODAS as outras preferências e contexto que o CLIENTE "
-        "expressou (família, pet, vaga, metrô, imóvel que gostou...). Não inclua sugestões feitas só pela SDR. Ou ''"
+        description="Resumo consolidado, em uma frase, de TODO o outro contexto que o CLIENTE expressou (momento da "
+        "empresa, expansão, imóvel que gostou, restrições...). Não inclua sugestões feitas só pela SDR. Ou ''"
     )
     route: Route = Field(
         description="'agendamento' se o cliente quer marcar/remarcar visita ou reunião ou está escolhendo horário; "
@@ -68,17 +92,31 @@ class LeadAnalysis(BaseModel):
     )
 
 
-# Campos que o SDR precisa coletar, por intenção, em ordem de prioridade
-REQUIRED_FIELDS: dict[str, list[str]] = {
+# Campos que o SDR precisa coletar, por segmento e intenção, em ordem de prioridade.
+# Comercial (B2B) segue o BANT: necessidade (atividade, espaço), orçamento, autoridade (decisor) e prazo.
+COMMERCIAL_FIELDS: dict[str, list[str]] = {
+    Intent.COMPRA: ["business_activity", "space", "regions", "budget_max", "name", "company", "decision_maker",
+                    "urgency", "financing"],
+    Intent.ALUGUEL: ["business_activity", "space", "regions", "budget_max", "name", "company", "decision_maker",
+                     "urgency"],
+    Intent.INVESTIMENTO: ["investor_profile", "ticket", "expected_return", "name", "urgency"],
+    Intent.INDEFINIDO: ["intent", "name"],
+}  # fmt: skip
+RESIDENTIAL_FIELDS: dict[str, list[str]] = {
     Intent.COMPRA: ["regions", "budget_max", "bedrooms", "property_type", "name", "urgency", "financing"],
     Intent.ALUGUEL: ["regions", "budget_max", "bedrooms", "name", "urgency"],
     Intent.INVESTIMENTO: ["investor_profile", "ticket", "expected_return", "name", "urgency"],
     Intent.INDEFINIDO: ["intent", "name"],
 }
+DEFAULT_SEGMENT = "comercial"  # carteira da imobiliária; vale enquanto o lead não indicar o segmento
 
 FIELD_LABELS = {
     "intent": "objetivo (comprar, alugar ou investir)",
     "name": "nome do cliente",
+    "company": "nome da empresa",
+    "decision_maker": "quem decide (se a pessoa é o decisor ou decide com sócios/diretoria)",
+    "business_activity": "atividade da empresa (o que vai funcionar no imóvel)",
+    "space": "tamanho do espaço (m²) ou quantas pessoas vão usar",
     "regions": "região/bairros de interesse",
     "budget_max": "faixa de preço",
     "bedrooms": "quantidade de quartos",
@@ -90,7 +128,8 @@ FIELD_LABELS = {
     "expected_return": "expectativa de retorno",
 }
 
-_SPECIAL = ("route", "intent", "intent_evidence", "wants_meeting", "notes", "phone", "declined_phone")
+_SPECIAL = ("route", "intent", "intent_evidence", "wants_meeting", "notes", "phone", "declined_phone", "segment",
+            "decision_maker", "requirements")  # fmt: skip
 _UPDATABLE = [f for f in LeadAnalysis.model_fields if f not in _SPECIAL]
 
 
@@ -139,6 +178,12 @@ def apply_analysis(lead: Lead, analysis: LeadAnalysis, client_text: str | None =
             setattr(lead, field, value)
     if phone := normalize_phone(analysis.phone):
         lead.phone = phone
+    if analysis.segment != "indefinido":
+        lead.segment = analysis.segment
+    if analysis.decision_maker != "nao_informado":
+        lead.decision_maker = analysis.decision_maker
+    if requirements := [r.strip() for r in analysis.requirements if r.strip()]:
+        lead.requirements = requirements  # o supervisor consolida a conversa inteira
     extra = dict(lead.extra or {})
     if analysis.declined_phone == "sim" and not lead.phone:
         extra["phone_declined"] = True
@@ -149,19 +194,26 @@ def apply_analysis(lead: Lead, analysis: LeadAnalysis, client_text: str | None =
     lead.extra = extra
 
 
+def segment_of(lead: Lead) -> str:
+    return lead.segment if lead.segment in ("comercial", "residencial") else DEFAULT_SEGMENT
+
+
 def _is_filled(lead: Lead, field: str) -> bool:
     if field == "intent":
         return lead.intent not in (None, Intent.INDEFINIDO)
+    if field == "space":  # m² ou nº de pessoas: qualquer um dos dois dimensiona o espaço
+        return bool(lead.area_min or lead.area_max or lead.headcount)
     value = getattr(lead, field)
     return value not in (None, [], "")
 
 
 def missing_fields(lead: Lead) -> list[str]:
-    return [f for f in REQUIRED_FIELDS.get(lead.intent or Intent.INDEFINIDO, []) if not _is_filled(lead, f)]
+    required = COMMERCIAL_FIELDS if segment_of(lead) == "comercial" else RESIDENTIAL_FIELDS
+    return [f for f in required.get(lead.intent or Intent.INDEFINIDO, []) if not _is_filled(lead, f)]
 
 
 def compute_score(lead: Lead) -> int:
-    """Score 0-100 com regras transparentes."""
+    """Score 0-100 com regras transparentes (no comercial, inclui o critério de autoridade do BANT)."""
     score = 0
     if _is_filled(lead, "intent"):
         score += 10
@@ -169,9 +221,14 @@ def compute_score(lead: Lead) -> int:
         score += 20
     if lead.regions:
         score += 10
-    if lead.bedrooms or lead.property_type or lead.expected_return or lead.investor_profile:
+    need = (lead.business_activity, _is_filled(lead, "space"), lead.bedrooms, lead.property_type,
+            lead.expected_return, lead.investor_profile)  # fmt: skip
+    if any(need):
         score += 10
     score += {"alta": 25, "media": 12}.get(lead.urgency or "", 0)
+    score += {"sim": 10, "compartilhada": 5}.get(lead.decision_maker or "", 0)
+    if lead.company:
+        score += 5
     if lead.financing:
         score += 5
     if lead.name:
