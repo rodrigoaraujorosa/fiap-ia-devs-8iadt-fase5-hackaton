@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { useId } from "react";
 
 /**
@@ -40,22 +41,17 @@ export function Logo({ size = 28 }: { size?: number }) {
 }
 
 /** Avatar da assistente Laris: balão de conversa com um telhado dentro. */
+/** Avatar da Laris (robô com headset): o mesmo do widget e do bot do Telegram (public/laris-avatar.svg). */
 export function LarisAvatar({ size = 36 }: { size?: number }) {
-  const id = useId();
   return (
-    <svg width={size} height={size} viewBox="0 0 36 36" aria-hidden className="shrink-0">
-      <defs>
-        <linearGradient id={`${id}-bg`} x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#14b8a6" />
-          <stop offset="1" stopColor="#0f766e" />
-        </linearGradient>
-      </defs>
-      <circle cx="18" cy="18" r="18" fill={`url(#${id}-bg)`} />
-      <path
-        d="M11 10.5h14a3 3 0 0 1 3 3v7.5a3 3 0 0 1-3 3h-7.5l-4.5 3.8v-3.8H11a3 3 0 0 1-3-3v-7.5a3 3 0 0 1 3-3z"
-        fill="#fff"
-      />
-      <path d="m13.8 19.4 4.2-3.6 4.2 3.6" fill="none" stroke="#0f766e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <Image
+      src="/laris-avatar.svg"
+      width={size}
+      height={size}
+      alt=""
+      aria-hidden
+      unoptimized
+      className="shrink-0 rounded-full"
+    />
   );
 }

@@ -6,13 +6,17 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.jobs.followup import run_followups
+from app.services import telegram
 from app.services.app_config import (
     EmailConfig,
     FollowupConfig,
+    TelegramConfig,
     get_email_config,
     get_followup_config,
+    get_telegram_config,
     save_email_config,
     save_followup_config,
+    save_telegram_config,
 )
 from app.services.demo import reset_demo
 from app.services.mailer import send_test_email, smtp_info
@@ -31,6 +35,15 @@ class SmtpInfo(BaseModel):
 
 class EmailConfigOut(EmailConfig):
     smtp: SmtpInfo
+
+
+class TelegramConfigOut(TelegramConfig):
+    configured: bool  # há token no .env
+    mode: str  # polling | webhook
+    status: str  # conectado, conectando, erro: ...
+    username: str | None
+    name: str | None
+    link: str | None
 
 
 @router.get("/config/followup", response_model=FollowupConfig)
@@ -65,6 +78,19 @@ def email_test(db: Session = Depends(get_db)):
     except (smtplib.SMTPException, OSError) as exc:
         raise HTTPException(502, f"Falha no envio: {type(exc).__name__}: {exc}") from exc
     return {"enviado_para": to_addr}
+
+
+@router.get("/config/telegram", response_model=TelegramConfigOut)
+def read_telegram_config(db: Session = Depends(get_db)):
+    """Liga/desliga do bot + situação da conexão (sem o token)."""
+    return {**telegram.bot_info(), **get_telegram_config(db).model_dump()}
+
+
+@router.put("/config/telegram", response_model=TelegramConfigOut)
+def update_telegram_config(config: TelegramConfig, db: Session = Depends(get_db)):
+    """Desligado, o bot para de responder e os follow-ups não são entregues no Telegram."""
+    saved = save_telegram_config(db, config)
+    return {**telegram.bot_info(), **saved.model_dump()}
 
 
 @router.post("/followups/run")

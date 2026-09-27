@@ -186,7 +186,9 @@ def _listar_horarios(ctx: ToolContext, raw: Any) -> ToolOutcome:
     }
     if not slots:
         payload["aviso"] = "Agenda cheia nos próximos dias; ofereça transferir para um corretor ligar."
-    return ToolOutcome(json.dumps(payload, ensure_ascii=False))
+        return ToolOutcome(json.dumps(payload, ensure_ascii=False))
+    # evento para os canais que mostram os horários como botões (Telegram)
+    return ToolOutcome(json.dumps(payload, ensure_ascii=False), event={"type": "slots", "items": payload["horarios"]})
 
 
 def _agendar(ctx: ToolContext, raw: Any) -> ToolOutcome:

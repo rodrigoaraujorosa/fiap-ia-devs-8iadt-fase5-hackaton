@@ -21,6 +21,7 @@ from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models import Lead, Message
 from app.models.enums import LeadStatus, MessageRole
+from app.services import telegram
 from app.services.app_config import get_followup_config
 
 log = logging.getLogger(__name__)
@@ -121,7 +122,8 @@ def send_followup(lead_id: uuid.UUID, attempt_count: int, last_lead_message_at: 
 
     # a mensagem entra na memória do agente, para ele saber o que já foi dito
     get_graph().update_state(config, {"messages": [{"role": "assistant", "content": text}]}, as_node="compra_aluguel")
-    log.info("Follow-up %s enviado ao lead %s", attempt, lead_id)
+    via_telegram = telegram.deliver_followup(lead_id, text)  # lead que conversa pelo Telegram recebe lá
+    log.info("Follow-up %s enviado ao lead %s%s", attempt, lead_id, " (Telegram)" if via_telegram else "")
     return text
 
 

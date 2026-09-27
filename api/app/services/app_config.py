@@ -45,6 +45,10 @@ class EmailConfig(BaseModel):
     demo_recipient: EmailStr = Field(description="Caixa que recebe os e-mails no modo demonstração")
 
 
+class TelegramConfig(BaseModel):
+    enabled: bool = Field(description="Liga/desliga o atendimento da Laris pelo bot do Telegram")
+
+
 def followup_defaults() -> FollowupConfig:
     s = get_settings()
     return FollowupConfig(enabled=s.followup_enabled, minutes=s.followup_minutes, max_attempts=s.followup_max_attempts)
@@ -84,6 +88,14 @@ def get_followup_config(db: Session | None = None) -> FollowupConfig:
 
 def save_followup_config(db: Session, config: FollowupConfig) -> FollowupConfig:
     return _save(db, "followup", config)
+
+
+def get_telegram_config(db: Session | None = None) -> TelegramConfig:
+    return _load(db, "telegram", TelegramConfig(enabled=True))
+
+
+def save_telegram_config(db: Session, config: TelegramConfig) -> TelegramConfig:
+    return _save(db, "telegram", config)
 
 
 def get_email_config(db: Session | None = None) -> EmailConfig:

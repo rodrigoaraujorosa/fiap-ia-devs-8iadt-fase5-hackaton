@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, CalendarCheck, Headset, RotateCcw, SendHorizontal, X } from "lucide-react";
+import { BellRing, CalendarCheck, Headset, RotateCcw, Send, SendHorizontal, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LarisAvatar } from "@/components/Brand";
@@ -16,6 +16,7 @@ import {
   type LeadDetail,
   type LeadSource,
   type Property,
+  type TelegramAvailability,
 } from "@/lib/api";
 import { TOOL_ACTIVITY, brl, clockTime, dateTime } from "@/lib/format";
 
@@ -101,6 +102,7 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
   const [appointment, setAppointment] = useState<AppointmentInfo | null>(null);
   const [input, setInput] = useState(embed?.draft ?? "");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [telegram, setTelegram] = useState<TelegramAvailability | null>(null);
   const [busy, setBusy] = useState(false);
   const [activity, setActivity] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -180,6 +182,33 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
       window.removeEventListener("message", onMessage);
     };
   }, [embed?.hostOrigin]);
+
+  // bot do Telegram disponível? (botão "Continuar no Telegram")
+  useEffect(() => {
+    apiGet<TelegramAvailability>("/chat/telegram")
+      .then(setTelegram)
+      .catch(() => setTelegram(null));
+  }, []);
+
+  async function continueOnTelegram() {
+    if (!telegram?.link) return;
+    const tab = window.open("", "_blank"); // abre no clique: navegadores bloqueiam pop-up aberto depois de um await
+    let url = telegram.link;
+    const id = leadIdRef.current;
+    if (id) {
+      try {
+        url = (await apiPost<{ url: string }>(`/chat/${id}/telegram-link`)).url; // leva a conversa junto
+      } catch {
+        /* sem vínculo: abre o bot numa conversa nova */
+      }
+    }
+    if (tab) {
+      tab.opener = null;
+      tab.location.href = url;
+    } else {
+      window.location.href = url;
+    }
+  }
 
   // widget na página de um imóvel: carrega o imóvel para a saudação personalizada
   const pagePropertyId = embed?.source.property_id;
@@ -327,6 +356,17 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
               {busy ? (activity ? `${activity}…` : "digitando…") : "online · responde na hora"}
             </p>
           </div>
+          {telegram?.available && (
+            <button
+              type="button"
+              onClick={continueOnTelegram}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-2 hover:bg-surface-2"
+              title="Continuar esta conversa no Telegram"
+              aria-label="Continuar no Telegram"
+            >
+              <Send aria-hidden size={13} /> Telegram
+            </button>
+          )}
           <button
             type="button"
             onClick={reset}

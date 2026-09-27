@@ -58,6 +58,9 @@ button { font: inherit; cursor: pointer; }
 .btn-light:hover { background: var(--gold-soft); }
 .btn-outline { background: transparent; color: var(--navy); border-color: var(--navy); }
 .btn-outline:hover { background: var(--navy); color: #fff; }
+.btn-ghost { background: transparent; color: #fff; border-color: rgba(255, 255, 255, .45); }
+.btn-ghost:hover { background: rgba(255, 255, 255, .1); }
+.btn svg { flex-shrink: 0; }
 .wide { width: 100%; }
 .link-btn { background: none; border: 0; padding: 0; color: var(--navy-2); font-weight: 700; text-decoration: underline; }
 
@@ -150,6 +153,9 @@ textarea { resize: vertical; }
 .service { border: 1px solid var(--line); border-top: 4px solid var(--navy); border-radius: 4px; padding: 22px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .service h3 { margin: 0; font-size: 20px; }
 .service p { margin: 0 0 6px; color: var(--ink-2); flex: 1; }
+.service-laris img { border-radius: 50%; }
+.service-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.foot-cta { display: flex; flex-wrap: wrap; gap: 8px; }
 .about { display: grid; gap: 32px; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: center; }
 .about p { color: var(--ink-2); }
 .stats { display: grid; gap: 12px; margin: 0; }

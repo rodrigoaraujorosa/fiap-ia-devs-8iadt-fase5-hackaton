@@ -8,6 +8,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Telegram](https://img.shields.io/badge/Telegram-bot-26A5E4?logo=telegram&logoColor=white)
 ![AWS](https://img.shields.io/badge/Deploy-AWS-FF9900?logo=amazonwebservices&logoColor=white)
 ![License](https://img.shields.io/badge/licen%C3%A7a-MIT-green)
 
@@ -106,6 +107,18 @@ python site-exemplo/build.py --widget https://SEU-APP/widget.js
 
 No WordPress, a linha do script pode ser colocada com um plugin de inserção de código no rodapé (ex.: WPCode).
 
+## ✈️ Bot do Telegram
+
+A mesma Laris atende pelo Telegram ([@imobiq_laris_bot](https://t.me/imobiq_laris_bot)), com a mesma memória, qualificação, busca e agenda do chat web:
+
+- Cada conversa com o bot vira um lead com canal **Telegram** no dashboard; `/nova` recomeça o atendimento.
+- "digitando…" enquanto ela pensa, respostas formatadas, imóveis citados com resumo, custo mensal total e link para o site, e **horários de visita como botões**.
+- O follow-up de quem conversa pelo Telegram chega no próprio Telegram.
+- **Continuar no Telegram:** o botão no chat (inclusive no widget do site) abre o bot já com a conversa, pelo link `t.me/<bot>?start=<token>` (token de uso único, válido por 30 minutos).
+- Liga/desliga em tempo real e situação da conexão (com QR code para abrir o bot no celular) na tela de configurações.
+
+Configuração: crie o bot no **@BotFather** e coloque o token em `TELEGRAM_BOT_TOKEN` no `.env`. Localmente a API usa **long polling** (não precisa de URL pública). Em produção, use `TELEGRAM_MODE=webhook` com `TELEGRAM_WEBHOOK_URL` (HTTPS) e `TELEGRAM_WEBHOOK_SECRET`: o Telegram passa a chamar `POST /webhooks/telegram`, e a API confere o segredo no cabeçalho de cada chamada. O token nunca aparece nos logs.
+
 ## 📁 Estrutura
 
 ```
@@ -159,7 +172,8 @@ uv run ruff check .
 - [x] **Dia 2** — Grafo multiagente (supervisor, compra/aluguel, investidor), extrator de perfil, memória, `/chat` com streaming
 - [x] **Dia 3** — Agente de agendamento, resumo para corretor, follow-up automático, observabilidade (Langfuse)
 - [x] **Dia 4** — Chat do lead (streaming + painel da IA em tempo real), dashboard do corretor e detalhe do lead
-- [ ] **Dia 5** — Diferenciais: deploy AWS, segurança, WhatsApp, Voice AI, CRM
+- [x] **Diferenciais já entregues** — e-mail do resumo ao corretor com convite (.ics), widget para sites de imobiliárias, site fictício, bot do Telegram
+- [ ] **Próximos** — segurança (acesso ao dashboard, limite de mensagens, domínios do widget), deploy AWS, voz no chat
 - [ ] **Dia 6** — Documentação, demo e pitch
 
 ## 📄 Licença

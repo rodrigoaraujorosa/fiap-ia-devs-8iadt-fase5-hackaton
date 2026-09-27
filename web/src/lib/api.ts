@@ -80,6 +80,7 @@ export type Lead = {
     phone_declined?: boolean;
     source?: LeadSource;
     viewing?: string;
+    telegram?: { chat_id: number; username?: string | null; first_name?: string | null };
   };
   score: number;
   temperature: "quente" | "morno" | "frio";
@@ -178,6 +179,17 @@ export type EmailConfigOut = EmailConfig & {
   smtp: { host: string; port: number; security: string; authenticated: boolean; sender: string; local_test_inbox: boolean };
 };
 
+export type TelegramConfig = { enabled: boolean };
+export type TelegramConfigOut = TelegramConfig & {
+  configured: boolean;
+  mode: string;
+  status: string;
+  username: string | null;
+  name: string | null;
+  link: string | null;
+};
+export type TelegramAvailability = { available: boolean; username: string | null; link: string | null };
+
 export type DemoResetResult = { leads: number; appointments: number; slots: number };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -207,6 +219,7 @@ export type ChatEvent =
   | { type: "properties"; items: Property[] }
   | { type: "appointment"; id: string; tipo: string; quando: string; com: string; imovel: string | null }
   | { type: "handoff"; corretor: string; prazo_retorno: string }
+  | { type: "slots"; items: { slot_id: number; quando: string; com: string }[] }
   | { type: "error"; message: string }
   | { type: "done"; reply: string; bubbles: string[]; property_ids: string[]; agent: string | null; lead: Lead };
 

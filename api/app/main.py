@@ -5,10 +5,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.agents import runtime
-from app.api.routes import admin, chat, health, leads, properties
+from app.api.routes import admin, chat, health, leads, properties, telegram
 from app.core import observability
 from app.core.config import get_settings
 from app.jobs import scheduler
+from app.services import telegram as telegram_bot
 
 settings = get_settings()
 logging.basicConfig(level=logging.INFO)
@@ -18,7 +19,9 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(_: FastAPI):
     runtime.start()  # grafo + checkpointer Postgres
     scheduler.start()  # follow-up automático + reposição da agenda
+    telegram_bot.start()  # bot do Telegram (polling local ou webhook), se houver token
     yield
+    telegram_bot.stop()
     scheduler.stop()
     runtime.stop()
     observability.flush()
@@ -39,3 +42,4 @@ app.include_router(properties.router)
 app.include_router(chat.router)
 app.include_router(leads.router)
 app.include_router(admin.router)
+app.include_router(telegram.router)

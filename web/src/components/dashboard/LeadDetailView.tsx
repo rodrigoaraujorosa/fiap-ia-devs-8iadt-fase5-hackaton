@@ -115,6 +115,14 @@ function EmailStatus({ emails, sending, onSend }: { emails: EmailLog[]; sending:
 }
 
 /** De onde o lead veio (widget no site da imobiliária): página de entrada, campanha e imóvel em foco. */
+function channelLabel(lead: LeadDetail): string {
+  if (lead.channel === "telegram") {
+    const user = lead.extra?.telegram?.username;
+    return `Telegram${user ? ` (@${user})` : ""}`;
+  }
+  return lead.channel === "site" ? `Site da ${lead.extra?.source?.brand ?? "imobiliária"}` : "Chat ImobiQ";
+}
+
 function SourceLine({ source, viewing }: { source: LeadSource; viewing?: string }) {
   const campaign = [source.utm_source, source.utm_medium, source.utm_campaign].filter(Boolean).join(" / ");
   const parts = [
@@ -218,7 +226,8 @@ export function LeadDetailView({ id }: { id: string }) {
         </div>
       </div>
       <p className="text-sm text-ink-2">
-        {lead.channel === "site" ? `Site da ${lead.extra?.source?.brand ?? "imobiliária"}` : "Chat ImobiQ"} · criado{" "}
+        {channelLabel(lead)}
+        {lead.extra?.telegram && lead.channel !== "telegram" ? " · continuou no Telegram" : ""} · criado{" "}
         {relativeTime(lead.created_at)} · último contato {relativeTime(lead.last_message_at)}
         {lead.assigned_broker && (
           <>

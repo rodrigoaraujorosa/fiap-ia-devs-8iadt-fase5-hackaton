@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     email_demo_recipient: str = "corretor@arrtsoftware.com.br"
     public_app_url: str = "http://localhost:3001"  # links "Abrir no dashboard" nos e-mails
 
+    # Telegram (bot criado no @BotFather). Sem token, a integração fica desligada.
+    # polling: a API busca as mensagens no Telegram (local, sem URL pública); webhook: o Telegram chama
+    # POST /webhooks/telegram (produção, exige TELEGRAM_WEBHOOK_URL pública com HTTPS).
+    telegram_bot_token: str | None = None
+    telegram_mode: str = "polling"  # polling | webhook
+    telegram_webhook_url: str | None = None  # ex.: https://imobiq.arrtsoftware.com.br/api/webhooks/telegram
+    telegram_webhook_secret: str | None = None  # conferido no cabeçalho X-Telegram-Bot-Api-Secret-Token
+    telegram_brand: str = "Imobiliária Exemplo"  # em nome de quem a Laris atende no Telegram
+    public_site_url: str = "http://localhost:5500"  # site da imobiliária: links "ver no site" dos imóveis
+
     # Agenda
     timezone: str = "America/Sao_Paulo"
     slot_days_ahead: int = 10

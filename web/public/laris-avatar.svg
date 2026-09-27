@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-label="Laris, assistente virtual da ImobiQ">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="640" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#0f5f59"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.2" r="0.7">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="head" x1="0" y1="200" x2="0" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e3f3f1"/>
+    </linearGradient>
+    <linearGradient id="visor" x1="0" y1="250" x2="0" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#134e4a"/>
+      <stop offset="1" stop-color="#0b3b38"/>
+    </linearGradient>
+  </defs>
+
+  <!-- fundo (o Telegram recorta em círculo: o robô fica no centro) -->
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <rect width="640" height="640" fill="url(#glow)"/>
+
+  <!-- ombros e corpo -->
+  <path d="M170 640c0-96 60-150 150-150s150 54 150 150z" fill="#ffffff"/>
+  <path d="M170 640c0-96 60-150 150-150s150 54 150 150z" fill="#0f766e" fill-opacity=".08"/>
+  <!-- broche de prédio -->
+  <g transform="translate(290 540)">
+    <rect width="60" height="60" rx="14" fill="#0f766e"/>
+    <path d="M17 46V22l13-8 13 8v24" fill="none" stroke="#ffffff" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M26 46V36h8v10" fill="none" stroke="#99f6e4" stroke-width="5" stroke-linejoin="round"/>
+  </g>
+  <!-- pescoço -->
+  <rect x="290" y="420" width="60" height="60" rx="10" fill="#cfe9e5"/>
+
+  <!-- antena com faísca de IA -->
+  <rect x="314" y="150" width="12" height="62" rx="6" fill="#ffffff"/>
+  <path d="M320 92c5 24 15 34 39 39-24 5-34 15-39 39-5-24-15-34-39-39 24-5 34-15 39-39z" fill="#99f6e4"/>
+
+  <!-- arco do headset -->
+  <path d="M168 318c0-100 68-164 152-164s152 64 152 164" fill="none" stroke="#0b3b38" stroke-width="18" stroke-linecap="round"/>
+
+  <!-- cabeça -->
+  <rect x="188" y="200" width="264" height="228" rx="72" fill="url(#head)"/>
+
+  <!-- fones -->
+  <rect x="146" y="272" width="56" height="96" rx="24" fill="#0b3b38"/>
+  <rect x="438" y="272" width="56" height="96" rx="24" fill="#0b3b38"/>
+  <rect x="160" y="290" width="18" height="60" rx="9" fill="#14b8a6"/>
+  <rect x="462" y="290" width="18" height="60" rx="9" fill="#14b8a6"/>
+  <!-- microfone -->
+  <path d="M174 360c0 58 40 86 106 86" fill="none" stroke="#0b3b38" stroke-width="12" stroke-linecap="round"/>
+  <rect x="270" y="430" width="36" height="30" rx="14" fill="#0b3b38"/>
+
+  <!-- visor com olhos sorridentes -->
+  <rect x="222" y="246" width="196" height="128" rx="48" fill="url(#visor)"/>
+  <path d="M258 318c8-20 36-20 44 0" fill="none" stroke="#5eead4" stroke-width="14" stroke-linecap="round"/>
+  <path d="M338 318c8-20 36-20 44 0" fill="none" stroke="#5eead4" stroke-width="14" stroke-linecap="round"/>
+  <path d="M296 346c14 12 34 12 48 0" fill="none" stroke="#99f6e4" stroke-width="9" stroke-linecap="round"/>
+  <!-- bochechas -->
+  <circle cx="250" cy="346" r="9" fill="#f9a8d4" fill-opacity=".55"/>
+  <circle cx="390" cy="346" r="9" fill="#f9a8d4" fill-opacity=".55"/>
+  <!-- brilho do visor -->
+  <path d="M246 272c12-10 26-14 44-14" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="8" stroke-linecap="round"/>
+</svg>

@@ -38,6 +38,13 @@ TYPES = {  # tipo: (singular, plural, matiz da ilustração)
 }
 COMMERCIAL = ["conjunto comercial", "andar corporativo", "laje corporativa", "prédio comercial", "galpão"]
 UF = {"Extrema": "MG"}
+TELEGRAM = "imobiq_laris_bot"  # bot da Laris no Telegram (--telegram troca)
+TG_ICON = (
+    '<svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18"><path fill="currentColor" d="M21.'
+    "4 3.6 2.9 10.7c-1.3.5-1.3 1.2-.2 1.5l4.7 1.5 1.8 5.6c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.3-2.2 4.7 3.5c.9."
+    '5 1.5.2 1.7-.8l3.1-14.6c.3-1.3-.5-1.9-1.4-1.5ZM8.9 13.3l9.3-5.9c.5-.3.9-.1.5.2l-7.9 7.2-.3 3.3z"/></'
+    "svg>"
+)
 FEATURED = ["IMV-025", "IMV-026", "IMV-009", "IMV-055", "IMV-006", "IMV-042", "IMV-049", "IMV-076"]
 
 
@@ -243,6 +250,12 @@ são simulados.</p>
     )
 
 
+def telegram_link(css: str) -> str:
+    if not TELEGRAM:
+        return ""
+    return f'<a class="{css}" href="https://t.me/{TELEGRAM}" target="_blank" rel="noopener">{TG_ICON} Telegram</a>'
+
+
 def footer_html(props: dict[str, dict]) -> str:
     combos = []
     for t in COMMERCIAL + ["apartamento", "cobertura", "casa", "studio"]:
@@ -265,8 +278,11 @@ def footer_html(props: dict[str, dict]) -> str:
       <p class="foot-units"><b>Unidade Faria Lima</b><br>Av. Exemplo, 1000 · 12º andar<br>Itaim Bibi · São Paulo/SP</p>
       <p class="foot-units"><b>Unidade Berrini</b><br>Rua Fictícia, 200 · 8º andar<br>Brooklin · São Paulo/SP</p>
       <p class="foot-units"><b>Horário</b><br>Corretores: seg. a sex., 9h às 18h<br>Laris: 24 horas, todos os dias</p>
-      <button class="btn btn-light" type="button" onclick="window.ImobiQ && ImobiQ.open()">
-        Fale agora com a Laris</button>
+      <div class="foot-cta">
+        <button class="btn btn-light" type="button" onclick="window.ImobiQ && ImobiQ.open()">
+          Fale agora com a Laris</button>
+        {telegram_link("btn btn-ghost")}
+      </div>
     </div>
     <div><p class="foot-title">Descubra outras possibilidades</p><ul class="foot-links">{"".join(combos)}</ul></div>
     <div><p class="foot-title">Bairros mais procurados</p><ul class="foot-links">{hood_links}</ul></div>
@@ -383,11 +399,15 @@ def home(props: dict[str, dict], widget: str, footer: str) -> str:
       de cap rate e garantias.</p>
       <a class="btn btn-outline" href="imoveis.html?finalidade=investir">Ver imóveis locados</a>
     </article>
-    <article class="service">
-      <h3>Fale com o especialista</h3>
-      <p>Visitas agendadas pelo chat com o corretor da especialidade: sedes corporativas, conjuntos, galpões,
-      residenciais de alto padrão e investimentos.</p>
-      <button class="btn btn-outline" type="button" onclick="window.ImobiQ && ImobiQ.open()">Conversar agora</button>
+    <article class="service service-laris">
+      <img src="assets/laris-avatar.svg" alt="" width="56" height="56">
+      <h3>Fale com a Laris</h3>
+      <p>Nossa assistente virtual atende 24h, entende o que a sua empresa precisa e agenda a visita com o
+      corretor da especialidade, aqui no site ou no Telegram.</p>
+      <div class="service-actions">
+        <button class="btn btn-outline" type="button" onclick="window.ImobiQ && ImobiQ.open()">Conversar agora</button>
+        {telegram_link("btn btn-outline")}
+      </div>
     </article>
   </div>
 </section>
@@ -667,6 +687,7 @@ def build(widget: str) -> None:
     (DIST / "assets" / "listing.js").write_text(LISTING_JS.replace("__TYPES__", plurals), encoding="utf-8")
     (DIST / "assets" / "site.js").write_text(SITE_JS, encoding="utf-8")
     (DIST / "assets" / "logo.svg").write_text(LOGO_SVG, encoding="utf-8")
+    shutil.copy(ROOT.parent / "web" / "public" / "laris-avatar.svg", DIST / "assets" / "laris-avatar.svg")
     footer = footer_html(props)
     (DIST / "index.html").write_text(home(props, widget, footer), encoding="utf-8")
     (DIST / "imoveis.html").write_text(listing(props, widget, footer), encoding="utf-8")
@@ -678,4 +699,7 @@ def build(widget: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--widget", default="http://localhost:3001/widget.js", help="URL do widget.js da ImobiQ")
-    build(parser.parse_args().widget)
+    parser.add_argument("--telegram", default=TELEGRAM, help="username do bot da Laris no Telegram ('' esconde)")
+    args = parser.parse_args()
+    TELEGRAM = args.telegram
+    build(args.widget)

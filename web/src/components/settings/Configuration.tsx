@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Check, DatabaseZap, ExternalLink, FlaskConical, Mail, Moon, Play, Send } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
@@ -15,6 +16,8 @@ import {
   type EmailConfigOut,
   type FollowupConfig,
   type Metrics,
+  type TelegramConfig,
+  type TelegramConfigOut,
 } from "@/lib/api";
 
 type Feedback = { tone: "ok" | "error"; text: string } | null;
@@ -499,6 +502,134 @@ function EmailSettings() {
   );
 }
 
+function TelegramSettings() {
+  const [saved, setSaved] = useState<TelegramConfigOut | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [failed, setFailed] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setSaved(await apiGet<TelegramConfigOut>("/config/telegram"));
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const first = window.setTimeout(load, 0);
+    const timer = window.setInterval(load, 15_000); // a situação da conexão muda sozinha (ex.: rede)
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+    };
+  }, [load]);
+
+  async function toggle(enabled: boolean) {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      setSaved(await apiPut<TelegramConfigOut>("/config/telegram", { enabled } satisfies TelegramConfig));
+      setFeedback({ tone: "ok", text: enabled ? "Bot do Telegram ligado." : "Bot do Telegram pausado." });
+    } catch {
+      setFeedback({ tone: "error", text: "Não foi possível salvar." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (failed && !saved) {
+    return (
+      <Card title="Bot do Telegram">
+        <p className="text-sm text-danger">Não consegui carregar a configuração. A API está rodando?</p>
+      </Card>
+    );
+  }
+  if (!saved) {
+    return (
+      <Card title="Bot do Telegram">
+        <div className="h-28 animate-pulse rounded-lg bg-surface-2" />
+      </Card>
+    );
+  }
+  if (!saved.configured) {
+    return (
+      <Card title="Bot do Telegram">
+        <p className="text-sm text-ink-2">
+          Nenhum bot configurado. Crie um bot no <strong className="font-medium text-ink">@BotFather</strong> e coloque o
+          token no <code className="rounded bg-surface-2 px-1">.env</code> como{" "}
+          <code className="rounded bg-surface-2 px-1">TELEGRAM_BOT_TOKEN</code>; depois reinicie a API.
+        </p>
+      </Card>
+    );
+  }
+
+  const connected = saved.status === "conectado";
+  const statusTone = connected ? "text-good" : saved.status.startsWith("erro") ? "text-danger" : "text-warm";
+  return (
+    <Card title="Bot do Telegram">
+      <div className="flex items-start justify-between gap-4 rounded-lg bg-surface-2 p-3">
+        <div>
+          <p className="text-sm font-medium text-ink">Atender pelo Telegram</p>
+          <p className="mt-0.5 text-sm text-ink-2">
+            {saved.enabled ? (
+              <>
+                <span className="font-medium text-good">Ativo.</span> A Laris responde no Telegram com a mesma memória e
+                qualificação do chat, e os follow-ups desses leads chegam por lá.
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-warm">Pausado.</span> O bot não responde e os follow-ups não são
+                entregues no Telegram.
+              </>
+            )}
+          </p>
+        </div>
+        <Switch checked={saved.enabled} label="Atender pelo Telegram" disabled={busy} onChange={toggle} />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-line pt-4">
+        {saved.link && (
+          <Image
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(saved.link)}`}
+            alt={`QR code para abrir @${saved.username} no Telegram`}
+            width={96}
+            height={96}
+            unoptimized
+            className="rounded-lg border border-line bg-white"
+          />
+        )}
+        <div className="min-w-0 flex-1 space-y-1 text-sm text-ink-2">
+          <p className="flex items-center gap-1.5">
+            <Send className="size-4 shrink-0 text-muted" aria-hidden />
+            {saved.username ? (
+              <a
+                href={saved.link ?? undefined}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-0.5 font-medium text-brand underline-offset-2 hover:underline"
+              >
+                @{saved.username} <ExternalLink className="size-3" aria-hidden />
+              </a>
+            ) : (
+              <span>bot ainda não identificado</span>
+            )}
+          </p>
+          <p>
+            Conexão: <span className={`font-medium ${statusTone}`}>{saved.status}</span> ·{" "}
+            {saved.mode === "webhook" ? "webhook (produção)" : "polling (local, sem URL pública)"}
+          </p>
+          <p className="text-xs text-muted">Aponte a câmera do celular para o QR code para abrir o bot na demo.</p>
+        </div>
+      </div>
+      <div className="mt-2">
+        <FeedbackLine feedback={feedback} />
+      </div>
+    </Card>
+  );
+}
+
 function DemoReset() {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -594,6 +725,7 @@ export function Configuration() {
       </div>
       <FollowupSettings />
       <EmailSettings />
+      <TelegramSettings />
       <DemoReset />
     </div>
   );

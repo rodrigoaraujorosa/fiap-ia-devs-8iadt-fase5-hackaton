@@ -73,11 +73,13 @@
     "transition:transform .15s ease}" +
     ".launcher:hover{transform:scale(1.06)}" +
     ".launcher:focus-visible{outline:3px solid #14b8a6;outline-offset:3px}" +
-    ".launcher svg{display:block;width:60px;height:60px}" +
+    ".launcher svg,.launcher img{display:block;width:60px;height:60px;border-radius:50%}" +
     ".launcher .close{display:none}.launcher.is-open .chat{display:none}.launcher.is-open .close{display:block}" +
     ".teaser{position:fixed;bottom:92px;" + side + ":20px;z-index:2147483646;max-width:280px;background:#fff;" +
     "color:#1f2933;border-radius:14px;padding:12px 34px 12px 14px;font-size:14px;line-height:1.4;" +
-    "box-shadow:0 8px 30px rgba(15,23,42,.18);cursor:pointer;animation:pop .25s ease}" +
+    "box-shadow:0 8px 30px rgba(15,23,42,.18);cursor:pointer;animation:pop .25s ease;display:flex;gap:10px;" +
+    "align-items:flex-start}" +
+    ".teaser img{width:34px;height:34px;border-radius:50%;flex-shrink:0}" +
     ".teaser b{color:#0f766e}" +
     ".teaser .x{position:absolute;top:6px;right:6px;width:24px;height:24px;border:0;background:none;color:#6b7280;" +
     "font-size:18px;line-height:1;cursor:pointer;border-radius:6px}" +
@@ -96,12 +98,7 @@
     '<button class="launcher" type="button" aria-label="Abrir chat com a Laris" aria-expanded="false">' +
     '<svg class="close" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="18" fill="#0f766e"/>' +
     '<path d="m12.5 12.5 11 11m0-11-11 11" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>' +
-    '<svg class="chat" viewBox="0 0 36 36" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="36" y2="36" ' +
-    'gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#14b8a6"/><stop offset="1" stop-color="#0f766e"/>' +
-    '</linearGradient></defs><circle cx="18" cy="18" r="18" fill="url(#g)"/>' +
-    '<path d="M11 10.5h14a3 3 0 0 1 3 3v7.5a3 3 0 0 1-3 3h-7.5l-4.5 3.8v-3.8H11a3 3 0 0 1-3-3v-7.5a3 3 0 0 1 3-3z" fill="#fff"/>' +
-    '<path d="m13.8 19.4 4.2-3.6 4.2 3.6" fill="none" stroke="#0f766e" stroke-width="2" stroke-linecap="round" ' +
-    'stroke-linejoin="round"/></svg></button>';
+    '<img class="chat" src="' + APP + '/laris-avatar.svg" alt=""></button>';
 
   var panel = root.querySelector(".panel");
   var launcher = root.querySelector(".launcher");
@@ -183,7 +180,9 @@
     var text = cfg.property
       ? "Oi! Sou a <b>Laris</b>. Quer saber mais sobre este imóvel ou agendar uma visita?"
       : "Oi! Sou a <b>Laris</b>. Posso te ajudar a encontrar o imóvel ideal?";
-    teaser.innerHTML = text + '<button class="x" type="button" aria-label="Dispensar convite">×</button>';
+    teaser.innerHTML =
+      '<img src="' + APP + '/laris-avatar.svg" alt=""><span>' + text + "</span>" +
+      '<button class="x" type="button" aria-label="Dispensar convite">×</button>';
     teaser.addEventListener("click", function (e) {
       if (e.target.classList.contains("x")) hideTeaser(true);
       else open();

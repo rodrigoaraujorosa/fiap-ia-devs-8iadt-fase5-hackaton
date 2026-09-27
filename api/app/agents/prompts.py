@@ -179,6 +179,13 @@ def _channel_lines(lead: Lead, viewing: Property | None) -> str:
     lines = f"Imobiliária: {brand}\n{portfolio_line()}"
     if lead.channel == "site":
         lines += f"Canal: chat no site da {brand} (widget)\n"
+    if tg := (lead.extra or {}).get("telegram"):
+        lines += "Canal: Telegram. Quando você listar horários, o cliente também os vê como botões para tocar.\n"
+        if tg.get("first_name") and not lead.name:
+            lines += (
+                f'Nome no perfil do Telegram: "{tg["first_name"]}". Pode ser apelido: se for usar, confirme '
+                f'com naturalidade (ex.: "posso te chamar de {tg["first_name"]}?").\n'
+            )
     if viewing:
         finalidade = "aluguel" if viewing.purpose == "aluguel" else "venda"
         lines += (
