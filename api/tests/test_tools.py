@@ -18,11 +18,11 @@ def lead(db):
 
 def test_search_blocked_until_client_states_purpose(db, lead):
     ctx = ToolContext(db=db, lead_id=lead.id)
-    blocked = run_tool(ctx, "buscar_imoveis", {"purpose": "aluguel", "max_price": 5000})
+    blocked = run_tool(ctx, "buscar_imoveis", {"purpose": "aluguel", "max_price": 20000})
     assert blocked.is_error and "comprar, alugar ou investir" in blocked.content
     assert not blocked.properties
 
     lead.intent = "aluguel"
     db.commit()
-    allowed = run_tool(ctx, "buscar_imoveis", {"purpose": "aluguel", "max_price": 5000})
+    allowed = run_tool(ctx, "buscar_imoveis", {"purpose": "aluguel", "max_price": 20000})
     assert not allowed.is_error and allowed.properties

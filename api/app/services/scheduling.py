@@ -40,7 +40,7 @@ def lead_zones(db: Session, lead: Lead, property_id: str | None = None) -> set[s
     if property_id and (prop := db.get(Property, property_id)):
         return {prop.zone}
     zones = set()
-    known_zones = {"zona sul", "zona oeste", "zona norte", "zona leste", "centro", "grande sp"}
+    known_zones = {"zona sul", "zona oeste", "zona norte", "zona leste", "centro", "grande sp", "interior"}
     for region in lead.regions or []:
         if _norm(region) in known_zones:
             zones.add(_norm(region))

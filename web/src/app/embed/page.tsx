@@ -32,5 +32,6 @@ export default async function EmbedPage({ searchParams }: PageProps<"/embed">) {
     hostOrigin = null;
   }
 
-  return <ChatApp embed={{ brand, leadId: text(params.lead, 40) ?? null, hostOrigin, source }} />;
+  const draft = text(params.draft, 2000);
+  return <ChatApp embed={{ brand, leadId: text(params.lead, 40) ?? null, hostOrigin, source, draft }} />;
 }

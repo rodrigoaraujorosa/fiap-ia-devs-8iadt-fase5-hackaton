@@ -15,7 +15,7 @@ class Property(Base):
     id: Mapped[str] = mapped_column(String(20), primary_key=True)  # ex.: IMV-001
     title: Mapped[str] = mapped_column(String(200))
     segment: Mapped[str] = mapped_column(String(20), default="comercial", index=True)  # comercial | residencial
-    property_type: Mapped[str] = mapped_column(String(40), index=True)  # sala comercial, loja, galpão... ou apartamento
+    property_type: Mapped[str] = mapped_column(String(40), index=True)  # conjunto comercial, galpão... ou apartamento
     purpose: Mapped[str] = mapped_column(String(20), index=True)  # venda | aluguel
     neighborhood: Mapped[str] = mapped_column(String(80), index=True)
     zone: Mapped[str] = mapped_column(String(40), index=True)  # zona sul, zona oeste...

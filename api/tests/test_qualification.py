@@ -152,5 +152,25 @@ def test_intent_requires_quote_from_client():
     assert lead.intent == "indefinido"
     apply_analysis(lead, _analysis(intent="aluguel", intent_evidence="é para alugar"), client)
     assert lead.intent == "indefinido"  # citação inventada
+    apply_analysis(lead, _analysis(intent="compra", intent_evidence="Meu orçamento é até 5 mil reais"), client)
+    assert lead.intent == "indefinido"  # o trecho existe, mas não fala de comprar
     apply_analysis(lead, _analysis(intent="aluguel", intent_evidence="E para ALUGAR!"), client + ". É para alugar.")
     assert lead.intent == "aluguel"  # acento, caixa e pontuação não importam
+
+
+def test_proper_name_capitalization():
+    from app.agents.qualification import proper_name
+
+    assert proper_name("alfredo") == "Alfredo"
+    assert proper_name("maria da silva") == "Maria da Silva"
+    assert proper_name("JOÃO DOS SANTOS") == "João dos Santos"
+    assert proper_name("ana-luísa") == "Ana-Luísa"
+    assert proper_name("McDonald") == "McDonald"  # grafia escolhida pelo cliente é mantida
+    assert proper_name("nuvem dev", fix_uppercase=False) == "Nuvem Dev"
+    assert proper_name("IBM Brasil", fix_uppercase=False) == "IBM Brasil"  # siglas de empresa ficam
+
+
+def test_apply_analysis_capitalizes_name_and_company():
+    lead = _lead()
+    apply_analysis(lead, _analysis(name="alfredo", company="grão fino café"))
+    assert lead.name == "Alfredo" and lead.company == "Grão Fino Café"

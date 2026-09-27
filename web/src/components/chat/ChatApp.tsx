@@ -25,6 +25,7 @@ export type EmbedOptions = {
   leadId: string | null;
   hostOrigin: string | null; // origem da página hospedeira, destino das mensagens postMessage
   source: LeadSource;
+  draft?: string; // mensagem pré-preenchida pelo site (ImobiQ.open({ message })): o visitante revisa e envia
 };
 
 type UiMessage = {
@@ -41,9 +42,9 @@ type UiMessage = {
 
 export const CHAT_STORAGE_KEY = "imobiq:lead_id";
 const WELCOME =
-  "Oi! Eu sou a Laris, da ImobiQ 😊 Posso te ajudar a encontrar um espaço para a sua empresa (sala, escritório, loja, galpão) ou um imóvel comercial para investir. Me conta o que você procura?";
+  "Oi! Eu sou a Laris, da ImobiQ 😊 Posso te ajudar a encontrar um espaço para a sua empresa (conjunto, andar corporativo, prédio ou galpão) ou um imóvel comercial para investir. Me conta o que você procura?";
 const SUGGESTIONS = [
-  "Procuro uma sala para a minha clínica na zona sul.",
+  "Procuro um conjunto para a minha clínica na zona sul.",
   "Quero investir em imóveis comerciais para renda.",
   "Preciso de um galpão perto da Via Dutra.",
 ];
@@ -98,7 +99,8 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [agent, setAgent] = useState<string | null>(null);
   const [appointment, setAppointment] = useState<AppointmentInfo | null>(null);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(embed?.draft ?? "");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [busy, setBusy] = useState(false);
   const [activity, setActivity] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +168,17 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
       if (e.key === "Escape") window.parent.postMessage({ type: "imobiq:close" }, host);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // o site pode abrir o chat com uma mensagem pronta (ex.: formulário "Fale com a imobiliária")
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== host || e.data?.type !== "imobiq:draft" || typeof e.data.text !== "string") return;
+      setInput(e.data.text.slice(0, 2000));
+      inputRef.current?.focus();
+    };
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("message", onMessage);
+    };
   }, [embed?.hostOrigin]);
 
   // widget na página de um imóvel: carrega o imóvel para a saudação personalizada
@@ -394,6 +406,8 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
           }}
         >
           <textarea
+            ref={inputRef}
+            autoFocus={Boolean(embed?.draft)}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {

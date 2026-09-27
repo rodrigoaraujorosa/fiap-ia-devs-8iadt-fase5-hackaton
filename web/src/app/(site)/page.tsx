@@ -42,8 +42,8 @@ export default async function Home() {
         </h1>
         <p className="text-lg text-ink-2">
           A Laris é uma SDR com IA generativa para imóveis comerciais: atende empresas e investidores na hora,
-          qualifica, mostra salas, lojas, galpões e lajes, agenda visitas e envia ao corretor, por e-mail, um resumo
-          pronto com o convite da visita.
+          qualifica, mostra conjuntos, andares corporativos, prédios e galpões, agenda visitas e envia ao corretor,
+          por e-mail, um resumo pronto com o convite da visita.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/chat" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-ink">

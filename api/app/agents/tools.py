@@ -129,9 +129,12 @@ def _brief(p: PropertyOut) -> dict:
     if p.segment == "residencial":
         data.update({"quartos": p.bedrooms, "suites": p.suites, "pet": p.pet_friendly})
     f = p.features or {}
-    for key in ("atividades", "andar", "pe_direito_m", "docas", "piso_carga_ton_m2", "acesso", "fachada_m", "andares"):
+    for key in ("atividades", "edificio", "classe", "certificacao", "entrega", "andar", "condominio", "pe_direito_m",
+                "docas", "piso_carga_ton_m2", "acesso", "fachada_m", "andares"):  # fmt: skip
         if f.get(key):
             data[key] = f[key]
+    if p.purpose == "aluguel" and (p.condo_fee or p.iptu):  # "pacote de locação": o que a empresa paga por mês
+        data["custo_mensal_total"] = p.price + (p.condo_fee or 0) + (p.iptu or 0)
     if f.get("locado"):
         data["locado"] = f["locado"]  # inquilino, contrato_ate, aluguel_atual
     if p.estimated_yield:

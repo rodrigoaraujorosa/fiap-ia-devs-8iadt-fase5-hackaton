@@ -11,7 +11,7 @@
 ![AWS](https://img.shields.io/badge/Deploy-AWS-FF9900?logo=amazonwebservices&logoColor=white)
 ![License](https://img.shields.io/badge/licen%C3%A7a-MIT-green)
 
-POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · Grupo 65: um agente SDR para **imóveis comerciais** que atende empresas e investidores, conversa de forma humanizada, faz a qualificação B2B (atividade, espaço, orçamento, quem decide e prazo), sugere salas, conjuntos, lajes, lojas, galpões e prédios de uma base simulada, agenda visitas com o corretor especialista, faz follow-up automático e envia resumos aos corretores. O código também suporta imóveis residenciais (campo de segmento).
+POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · Grupo 65: um agente SDR para **imóveis comerciais** que atende empresas e investidores, conversa de forma humanizada, faz a qualificação B2B (atividade, espaço, orçamento, quem decide e prazo), sugere conjuntos, andares corporativos, lajes, prédios e galpões logísticos de uma base simulada (inspirada na carteira de uma imobiliária de real estate corporativo de São Paulo), agenda visitas com o corretor especialista, faz follow-up automático e envia resumos aos corretores. A base também tem alguns residenciais de alto padrão, e a Laris atende os dois segmentos.
 
 > 🚧 Documentação completa (arquitetura, explicação da IA, demo e pitch) será finalizada ao longo do desenvolvimento.
 
@@ -47,7 +47,7 @@ flowchart LR
 ```
 
 - **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada: segmento, empresa, cargo, se é o decisor, atividade, área ou nº de pessoas, requisitos, orçamento, região, urgência e perfil de investidor (no residencial, quartos). Regras determinísticas calculam campos faltantes (no comercial, seguindo o BANT: necessidade, orçamento, autoridade e prazo), score (0-100), temperatura e etapa do funil, e escolhem o agente que responde. O perfil registra só o que o cliente disse: a finalidade (compra, aluguel ou investimento) exige um trecho citado literalmente da mensagem do cliente, conferido pelo código, e a busca de imóveis fica travada até ela ser declarada. O telefone é pedido ao agendar ou encaminhar, uma única vez.
-- **Agentes (Sonnet):** persona humanizada ("Laris"), uma pergunta por vez, guiada pela lista de campos faltantes. *Locação e Compra* e *Investimentos* (imóveis locados, cap rate) qualificam e sugerem imóveis; *Agendamento* consulta a agenda do corretor especialista no tipo de imóvel (escritórios, salas e consultórios, lojas, galpões, ou o especialista em investimentos) e confirma visitas e reuniões. A busca entende a linguagem do cliente ("escritório", "ponto", "depósito", "Faria Lima", "Augusta") e filtra por atividade permitida, área, vagas, docas e pé-direito.
+- **Agentes (Sonnet):** persona humanizada ("Laris"), uma pergunta por vez, guiada pela lista de campos faltantes. *Locação e Compra* e *Investimentos* (imóveis locados, cap rate) qualificam e sugerem imóveis; *Agendamento* consulta a agenda do corretor especialista no tipo de imóvel (sedes corporativas, conjuntos, galpões, residenciais de alto padrão, ou o especialista em investimentos) e confirma visitas e reuniões. A busca entende a linguagem do cliente ("escritório", "sede", "andar", "CD", "Faria Lima", "JK", "Berrini", "Via Dutra") e filtra por atividade permitida, área, vagas, docas e pé-direito. Nos aluguéis, a Laris informa o custo mensal total (aluguel + condomínio + IPTU).
 - **Resumo inteligente:** ao agendar ou encaminhar, o corretor recebe um briefing estruturado (perfil, necessidades, imóveis de interesse, objeções, próximos passos, abordagem sugerida) **por e-mail**, com o convite de calendário (.ics) da visita anexado. No modo demonstração, todos os e-mails vão para uma única caixa, com o corretor de destino no assunto.
 - **Follow-up automático:** um job reserva leads sem resposta (`FOR UPDATE SKIP LOCKED`, seguro com várias instâncias) e envia mensagens com o contexto da conversa. Cada tentativa usa uma estratégia (retomar, agregar valor, encerrar), com cadência crescente; depois da última, o lead vai para *perdido*. Se ele voltar, a conversa continua de onde parou. O envio pode ser pausado, ter a cadência ajustada ou um horário de silêncio definido em tempo real na tela de configurações.
 - **Memória:** o histórico completo (inclusive ferramentas e follow-ups) é o estado do grafo LangGraph, persistido no Postgres pelo checkpointer. A conversa continua mesmo após reiniciar a API.
@@ -96,9 +96,9 @@ A Laris pode ser instalada no site de qualquer imobiliária com uma linha, antes
 - A Laris se apresenta em nome da imobiliária (`data-brand`) e, na página de um imóvel (`data-property`), já abre falando dele e responde sobre "este imóvel".
 - O dashboard mostra a origem do lead: site, página de entrada e campanha (UTM de primeiro toque).
 - A conversa continua se o visitante recarregar ou mudar de página (a sessão fica guardada no domínio do site).
-- Opcionais: `data-teaser-delay` (segundos até o convite aparecer; `0` desliga) e `data-position="left"`. API JavaScript: `ImobiQ.open()`, `ImobiQ.close()`, `ImobiQ.toggle()`.
+- Opcionais: `data-teaser-delay` (segundos até o convite aparecer; `0` desliga) e `data-position="left"`. API JavaScript: `ImobiQ.open()`, `ImobiQ.open({ message })` (abre o chat com a mensagem já digitada, para o visitante revisar e enviar), `ImobiQ.close()`, `ImobiQ.toggle()`.
 
-O site fictício da **Imobiliária Exemplo** (`site-exemplo/`) é gerado a partir da mesma base de imóveis e serve de demonstração. Para produção, gere apontando para o widget publicado e suba a pasta `dist/` em qualquer hospedagem estática:
+O site fictício da **Imobiliária Exemplo** (`site-exemplo/`) é gerado a partir da mesma base de imóveis e serve de demonstração, com o visual de uma imobiliária de real estate corporativo: busca por pretensão (alugar, comprar, investir) e por código, cards com o código do imóvel, página do imóvel com pacote de locação e especificações técnicas, e o formulário "Fale com a imobiliária" e o "Encomende seu imóvel" abrindo a Laris com a mensagem pronta. Para produção, gere apontando para o widget publicado e suba a pasta `dist/` em qualquer hospedagem estática:
 
 ```bash
 python site-exemplo/build.py --widget https://SEU-APP/widget.js
@@ -112,7 +112,7 @@ No WordPress, a linha do script pode ser colocada com um plugin de inserção de
 api/    FastAPI + agentes (app/), migrations (alembic/), seed (scripts/), testes (tests/)
 web/    Next.js — chat do lead, dashboard do corretor, configurações e o widget (public/widget.js)
 site-exemplo/  gerador do site fictício da "Imobiliária Exemplo", com o widget embutido
-data/   base simulada: 100 imóveis comerciais em SP e região (gerador determinístico), corretores por especialidade e leads de demonstração
+data/   base simulada: 76 imóveis (68 comerciais e 8 residenciais de alto padrão) em SP e região, com edifícios fictícios (gerador determinístico), corretores por especialidade e leads de demonstração
 docs/   arquitetura, explicação da IA e pitch
 ```
 

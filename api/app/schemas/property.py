@@ -9,8 +9,9 @@ class PropertySearchParams(BaseModel):
     segment: str | None = Field(None, description="'comercial' ou 'residencial'")
     property_type: str | None = Field(
         None,
-        description="Comercial: sala comercial, conjunto comercial, laje corporativa, loja, galpão, prédio comercial "
-        "(sinônimos como 'escritório', 'ponto', 'depósito' também funcionam). Residencial: apartamento, casa, studio",
+        description="Comercial: conjunto comercial, andar corporativo, laje corporativa, prédio comercial, galpão "
+        "(sinônimos como 'escritório', 'sala', 'sede', 'depósito', 'CD' também funcionam). "
+        "Residencial: apartamento, cobertura, casa, studio",
     )
     zones: list[str] | None = Field(None, description="Ex.: ['zona sul', 'zona oeste', 'centro', 'grande sp']")
     neighborhoods: list[str] | None = Field(None, description="Ex.: ['Itaim Bibi', 'Vila Olímpia']")
@@ -25,7 +26,7 @@ class PropertySearchParams(BaseModel):
         "alimentação, serviços, showroom, logística, armazenagem, e-commerce, indústria leve, educação",
     )
     min_docks: int | None = Field(None, description="Galpões: docas mínimas")
-    min_ceiling_height: float | None = Field(None, description="Pé-direito mínimo em metros (galpões e lojas)")
+    min_ceiling_height: float | None = Field(None, description="Pé-direito mínimo em metros (galpões)")
     leased: bool | None = Field(None, description="True: só imóveis à venda já locados (renda imediata p/ investidor)")
     furnished: bool | None = Field(None, description="Mobiliado/pronto para uso")
     min_yield: float | None = Field(None, description="Rentabilidade mínima estimada (% a.a.)")

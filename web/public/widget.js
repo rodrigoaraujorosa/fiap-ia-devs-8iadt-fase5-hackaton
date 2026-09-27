@@ -9,7 +9,8 @@
  *   data-teaser-delay="8"     segundos até o convite aparecer (0 desliga)
  *   data-position="left"      canto da tela (padrão: direita)
  *
- * API: window.ImobiQ.open() · .close() · .toggle()
+ * API: window.ImobiQ.open() · .open({ message: "texto" }) · .close() · .toggle()
+ *   open({ message }) abre o chat com a mensagem já digitada (o visitante revisa e envia)
  */
 (function () {
   "use strict";
@@ -108,7 +109,7 @@
   var iframe = null;
   var isOpen = false;
 
-  function iframeUrl() {
+  function iframeUrl(draft) {
     var params = new URLSearchParams({
       host: location.origin,
       brand: cfg.brand,
@@ -117,6 +118,7 @@
       referrer: document.referrer,
     });
     if (cfg.property) params.set("property", cfg.property);
+    if (draft) params.set("draft", draft);
     var lead = read("localStorage", LEAD_KEY);
     if (lead) params.set("lead", lead);
     Object.keys(utm).forEach(function (k) {
@@ -125,14 +127,16 @@
     return APP + "/embed?" + params.toString();
   }
 
-  function open() {
+  function open(options) {
+    var draft = options && typeof options.message === "string" ? options.message.slice(0, 2000) : "";
+    if (iframe && draft) iframe.contentWindow.postMessage({ type: "imobiq:draft", text: draft }, APP);
     if (isOpen) return;
     hideTeaser(true);
     if (!iframe) {
       // o chat só é carregado no primeiro clique: não pesa no carregamento do site
       iframe = document.createElement("iframe");
       iframe.title = "Chat com a Laris";
-      iframe.src = iframeUrl();
+      iframe.src = iframeUrl(draft);
       iframe.allow = "clipboard-write";
       panel.appendChild(iframe);
     }
@@ -187,7 +191,9 @@
     root.appendChild(teaser);
   }
 
-  launcher.addEventListener("click", toggle);
+  launcher.addEventListener("click", function () {
+    toggle();
+  });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && isOpen) close();
   });

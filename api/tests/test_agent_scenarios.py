@@ -32,12 +32,12 @@ def _tools(events, name: str, status: str = "start") -> list[dict]:
     return [e for e in events if e["type"] == "tool" and e["name"] == name and e["status"] == status]
 
 
-def test_exemplo_1_sala_para_clinica(db):
+def test_exemplo_1_conjunto_para_clinica(db):
     """Exemplo 1 adaptado: empresa procurando espaço, com qualificação B2B (atividade, espaço, decisor, prazo)."""
     lead = _new_lead(db)
-    first = _talk(lead.id, "Procuro uma sala para a minha clínica na zona sul.")
+    first = _talk(lead.id, "Procuro um conjunto para a minha clínica na zona sul.")
     assert first[0]["type"] == "analysis"
-    second = _talk(lead.id, "É pra alugar. Somos 6 pessoas e podemos pagar até 8 mil de aluguel")
+    second = _talk(lead.id, "É pra alugar. Somos 15 pessoas e podemos pagar até 25 mil de aluguel")
     third = _talk(lead.id, "Me chamo Ricardo, sou sócio da Clínica Vida Plena e decido junto com a minha sócia. "
                            "Precisamos mudar em 3 semanas")  # fmt: skip
 
@@ -48,8 +48,8 @@ def test_exemplo_1_sala_para_clinica(db):
     assert final["intent"] == "aluguel"
     assert "clínica" in (final["business_activity"] or "").lower()
     assert "zona sul" in [r.lower() for r in final["regions"]]
-    assert final["budget_max"] == 8000
-    assert final["headcount"] == 6
+    assert final["budget_max"] == 25000
+    assert final["headcount"] == 15
     assert "vida plena" in (final["company"] or "").lower()
     assert final["decision_maker"] == "compartilhada"
     assert final["urgency"] == "alta"
@@ -84,17 +84,17 @@ def test_memoria_entre_turnos(db):
 
 
 def test_agendamento_de_visita_com_especialista(db):
-    """Visita a uma loja: o corretor escolhido é o especialista em lojas."""
+    """Visita a um andar corporativo: a corretora escolhida é a especialista em sedes corporativas."""
     lead = _new_lead(db)
-    _talk(lead.id, "Quero alugar uma loja para abrir uma cafeteria na Augusta, até 40 mil. Sou a Paula, sócia da "
-                   "Café Paulista, e preciso inaugurar em 1 mês")  # fmt: skip
+    _talk(lead.id, "Quero alugar um andar corporativo na Faria Lima para a sede da minha empresa, até 300 mil. Sou a "
+                   "Paula, sócia da Vértice Capital, e preciso mudar em 1 mês")  # fmt: skip
     events = _talk(lead.id, "Quero visitar a primeira que você mostrou. Pode ser no próximo dia útil, de tarde?")
     assert any(e["type"] == "agent" and e["agent"] == "agendamento" for e in events)
     if not any(e["type"] == "appointment" for e in events):  # o agente pode primeiro oferecer opções
         events = _talk(lead.id, "Pode ser o primeiro horário que você falou")
     appointment = next(e for e in events if e["type"] == "appointment")
     assert appointment["tipo"] == "visita"
-    assert appointment["com"] == "Juliana Pereira"  # especialista em lojas
+    assert appointment["com"] == "Mariana Costa"  # especialista em andares, lajes e prédios
     assert events[-1]["lead"]["status"] == "agendado"
 
 
@@ -116,7 +116,7 @@ def test_conversa_rodrigo_regressao(db):
 
     first = _talk(lead.id, "Oi, boa tarde, procuro um espaço perto do metrô para o meu escritório de contabilidade. "
                            "Não tenho preferência pela região.")  # fmt: skip
-    second = _talk(lead.id, "Meu nome é Rodrigo, e a faixa de preço é até 5 mil reais")
+    second = _talk(lead.id, "Meu nome é Rodrigo, e a faixa de preço é até 20 mil reais")
     # sem dizer se é compra ou aluguel: não pode presumir pelo valor, precisa perguntar
     assert second[-1]["lead"]["intent"] == "indefinido"
     assert not _tools(first + second, "buscar_imoveis", "done"), "não deveria buscar antes de saber a finalidade"
@@ -125,12 +125,12 @@ def test_conversa_rodrigo_regressao(db):
     third = _talk(lead.id, "É para alugar")
     final = third[-1]
     assert _tools(third, "buscar_imoveis", "done")
-    assert final["property_ids"], "há salas até R$ 5 mil perto do metrô"
+    assert final["property_ids"], "há conjuntos até R$ 20 mil perto do metrô"
     assert all(code in final["reply"].upper() for code in final["property_ids"])  # cards = imóveis citados
     assert len(final["property_ids"]) <= 3
     profile = final["lead"]
-    assert profile["intent"] == "aluguel" and profile["budget_max"] == 5000
-    assert not profile["budget_min"], "'até 5 mil' não tem mínimo"
+    assert profile["intent"] == "aluguel" and profile["budget_max"] == 20000
+    assert not profile["budget_min"], "'até 20 mil' não tem mínimo"
     assert [r.lower() for r in profile["regions"]] in ([], ["sem preferência"]), profile["regions"]
 
     events = _talk(lead.id, "Gostei da primeira opção, quero visitar na próxima terça à tarde")

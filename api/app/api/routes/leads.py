@@ -38,7 +38,9 @@ def list_leads(
         stmt = stmt.where(Lead.temperature == temperature)
     if intent:
         stmt = stmt.where(Lead.intent == intent)
-    return db.scalars(stmt.order_by(Lead.score.desc(), Lead.last_message_at.desc()).limit(limit)).all()
+    # mais recentes no topo (último contato; leads sem mensagem pela criação), como uma caixa de entrada
+    recent = func.coalesce(Lead.last_message_at, Lead.created_at)
+    return db.scalars(stmt.order_by(recent.desc(), Lead.created_at.desc()).limit(limit)).all()
 
 
 @router.get("/leads/{lead_id}", response_model=LeadDetail)

@@ -57,8 +57,8 @@ class LeadAnalysis(BaseModel):
         "'pé-direito alto', 'perto do metrô'); [] se nenhum"
     )
     property_type: str = Field(
-        description="sala comercial, conjunto comercial, laje corporativa, loja, galpão, prédio comercial, "
-        "escritório (se não especificou), ou residencial (apartamento, casa, studio), ou ''"
+        description="conjunto comercial, andar corporativo, laje corporativa, prédio comercial, galpão, "
+        "escritório (se não especificou), ou residencial (apartamento, cobertura, casa, studio), ou ''"
     )
     budget_min: int = Field(
         description="Valor mínimo que o cliente disse (ex.: 'entre 1.500 e 2.000' → 1500), ou 0. 'Até X' → 0"
@@ -144,6 +144,24 @@ def normalize_phone(raw: str) -> str | None:
     return f"+55 {ddd} {number[:-4]}-{number[-4:]}"
 
 
+_NAME_PARTICLES = {"da", "de", "do", "das", "dos", "e", "di", "du", "van", "von"}
+
+
+def proper_name(raw: str, fix_uppercase: bool = True) -> str:
+    """Nome próprio com iniciais maiúsculas ("maria da silva" → "Maria da Silva").
+
+    Só mexe em palavras digitadas todas em minúsculas (ou todas em maiúsculas, se fix_uppercase): quem escreveu
+    "McDonald" ou "iFood" já escolheu a grafia. Para empresas use fix_uppercase=False (siglas como "IBM").
+    """
+    words = []
+    for i, word in enumerate(raw.split()):
+        if word.islower() or (fix_uppercase and word.isupper() and len(word) > 1):
+            low = word.lower()
+            word = low if i and low in _NAME_PARTICLES else "-".join(p[:1].upper() + p[1:] for p in low.split("-"))
+        words.append(word)
+    return " ".join(words)
+
+
 def _informed(value) -> bool:
     return value not in (None, "", 0, [], "desconhecida", "nao_informado")
 
@@ -153,10 +171,22 @@ def _plain(text: str) -> str:
     return " ".join("".join(c if c.isalnum() else " " for c in text if unicodedata.category(c) != "Mn").split())
 
 
+# palavras que um trecho precisa ter para declarar cada finalidade (sem acento, minúsculas)
+INTENT_WORDS = {
+    Intent.COMPRA: re.compile(r"compr|adquir|propri"),
+    Intent.ALUGUEL: re.compile(r"alug|locar|locacao"),
+    Intent.INVESTIMENTO: re.compile(r"invest|renda|rentab|retorno"),
+}
+
+
 def intent_is_grounded(analysis: LeadAnalysis, client_text: str) -> bool:
-    """A finalidade só vale se o trecho citado pelo analisador existir mesmo nas mensagens do cliente."""
+    """A finalidade só vale se o trecho citado existir nas mensagens do cliente E falar da finalidade.
+
+    Sem a segunda condição, o analisador podia citar "até 20 mil reais" (que existe) como prova de "compra".
+    """
     evidence = _plain(analysis.intent_evidence)
-    return bool(evidence) and evidence in _plain(client_text)
+    words = INTENT_WORDS.get(analysis.intent)
+    return bool(evidence) and evidence in _plain(client_text) and bool(words and words.search(evidence))
 
 
 def apply_analysis(lead: Lead, analysis: LeadAnalysis, client_text: str | None = None) -> None:
@@ -176,6 +206,10 @@ def apply_analysis(lead: Lead, analysis: LeadAnalysis, client_text: str | None =
             value = value.strip()
         if _informed(value):
             setattr(lead, field, value)
+    if lead.name:
+        lead.name = proper_name(lead.name)
+    if lead.company:
+        lead.company = proper_name(lead.company, fix_uppercase=False)
     if phone := normalize_phone(analysis.phone):
         lead.phone = phone
     if analysis.segment != "indefinido":

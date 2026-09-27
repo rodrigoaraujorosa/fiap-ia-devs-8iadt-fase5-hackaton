@@ -11,12 +11,12 @@
       "decision_maker": "compartilhada",
       "business_activity": "clínica odontológica",
       "intent": "aluguel",
-      "property_type": "sala comercial",
-      "area_min": 45,
-      "budget_max": 4000,
+      "property_type": "conjunto comercial",
+      "area_min": 160,
+      "budget_max": 22000,
       "regions": [
-        "Moema",
-        "Paraíso"
+        "Paraíso",
+        "Paulista"
       ],
       "requirements": [
         "perto do metrô",
@@ -24,7 +24,7 @@
       ],
       "urgency": "alta",
       "timeline": "contrato atual vence em 2 meses",
-      "notes": "Clínica com 2 cadeiras quer mudar para perto do metrô; decide com o sócio.",
+      "notes": "Clínica com 6 cadeiras quer mudar para perto do metrô; decide com o sócio.",
       "extra": {
         "wants_meeting": true
       }
@@ -33,33 +33,33 @@
       {
         "role": "user",
         "minutes_ago": 1560,
-        "content": "Oi! Preciso alugar uma sala para a minha clínica odontológica, de preferência em Moema ou no Paraíso"
+        "content": "Oi! Preciso alugar um conjunto para a nossa clínica odontológica, de preferência no Paraíso ou perto da Paulista"
       },
       {
         "role": "assistant",
         "minutes_ago": 1559,
         "agent": "compra_aluguel",
-        "content": "Oi! Eu sou a Laris, da ImobiQ 😊 Moema e Paraíso são ótimas para clínica, com muito fluxo de pacientes. Qual tamanho de sala vocês precisam e até quanto pensam em pagar de aluguel?"
+        "content": "Oi! Eu sou a Laris, da ImobiQ 😊 Paraíso e Paulista são ótimos para clínica, com metrô e muito fluxo de pacientes. Qual tamanho de espaço vocês precisam e até quanto pensam em pagar de aluguel?"
       },
       {
         "role": "user",
         "minutes_ago": 1556,
-        "content": "Uns 45 a 50 m², até 4 mil. Sou a Ana, sou sócia da Sorriso Pleno. O contrato da sala atual vence em 2 meses"
+        "content": "Uns 160 a 200 m², são 6 cadeiras, até 22 mil. Sou a Ana, sócia da Sorriso Pleno. O contrato atual vence em 2 meses"
       },
       {
         "role": "assistant",
         "minutes_ago": 1555,
         "agent": "compra_aluguel",
         "property_ids": [
-          "IMV-021",
-          "IMV-023"
+          "IMV-009",
+          "IMV-007"
         ],
-        "content": "Prazer, Ana! Separei duas salas que permitem clínica e ficam perto do metrô:\n\n- **IMV-021** · Moema, 50 m², R$ 2.800/mês\n- **IMV-023** · Paraíso, 50 m², R$ 3.100/mês\n\nE essa decisão é sua ou passa pelo seu sócio também?"
+        "content": "Prazer, Ana! Separei dois conjuntos que permitem clínica e ficam perto do metrô:\n\n- **IMV-009** · Paraíso, 190 m², R$ 20.000/mês (R$ 29.650 no total, com condomínio e IPTU)\n- **IMV-007** · Paulista, 185 m², R$ 18.900/mês (R$ 26.520 no total)\n\nE essa decisão é sua ou passa pelo seu sócio também?"
       },
       {
         "role": "user",
         "minutes_ago": 1550,
-        "content": "Decido junto com meu sócio. Gostei muito da de Moema, dá pra visitar?"
+        "content": "Decido junto com meu sócio. Gostei muito do Paraíso, dá pra visitar?"
       },
       {
         "role": "assistant",
@@ -77,7 +77,7 @@
         "minutes_ago": 1545,
         "agent": "agendamento",
         "appointment": true,
-        "content": "Prontinho, Ana! ✅ Visita à sala **IMV-021** agendada com o Rafael Almeida, nosso especialista em salas e consultórios. Ele já recebeu o resumo da nossa conversa. Se o seu sócio puder ir junto, melhor ainda!"
+        "content": "Prontinho, Ana! ✅ Visita ao conjunto **IMV-009** agendada com o Rafael Almeida, nosso especialista em conjuntos comerciais. Ele já recebeu o resumo da nossa conversa. Se o seu sócio puder ir junto, melhor ainda!"
       }
     ],
     "appointment": {
@@ -85,30 +85,30 @@
       "business_days_ahead": 2,
       "hour": 9,
       "kind": "visita",
-      "property_id": "IMV-021",
-      "notes": "Clínica odontológica, 2 cadeiras; decide com o sócio."
+      "property_id": "IMV-009",
+      "notes": "Clínica odontológica, 6 cadeiras; decide com o sócio."
     },
     "summary": {
-      "resumo": "Ana é dentista e sócia da Sorriso Pleno Odontologia. Procura sala de 45 a 50 m² para alugar em Moema ou no Paraíso, até R$ 4 mil, perto do metrô. O contrato atual vence em 2 meses.",
-      "perfil": "Clínica odontológica de pequeno porte; Ana decide junto com o sócio",
+      "resumo": "Ana é dentista e sócia da Sorriso Pleno Odontologia. Procura conjunto de 160 a 200 m² para alugar no Paraíso ou perto da Paulista, até R$ 22 mil, perto do metrô. O contrato atual vence em 2 meses.",
+      "perfil": "Clínica odontológica com 6 cadeiras; Ana decide junto com o sócio",
       "necessidades": [
-        "Sala que permita clínica",
-        "45 a 50 m²",
-        "Moema ou Paraíso",
-        "Até R$ 4.000/mês",
+        "Conjunto que permita clínica",
+        "160 a 200 m²",
+        "Paraíso ou Paulista",
+        "Até R$ 22.000/mês de aluguel",
         "Perto do metrô"
       ],
       "imoveis_de_interesse": [
-        "IMV-021",
-        "IMV-023"
+        "IMV-009",
+        "IMV-007"
       ],
       "objecoes_e_duvidas": [
         "A decisão depende também do sócio"
       ],
       "proximos_passos": [
-        "Confirmar a visita ao IMV-021 com Ana e, se possível, com o sócio",
+        "Confirmar a visita ao IMV-009 com Ana e, se possível, com o sócio",
         "Levar informações de adequação para clínica (pontos de água e esgoto)",
-        "Ter o IMV-023 como segunda opção"
+        "Ter o IMV-007 como segunda opção"
       ],
       "abordagem_sugerida": "Convidar o sócio para a visita e destacar o fluxo de pacientes e o acesso pelo metrô."
     }
@@ -122,11 +122,11 @@
       "segment": "comercial",
       "intent": "investimento",
       "investor_profile": "renda mensal com imóvel já locado, longo prazo",
-      "ticket": 2000000,
-      "expected_return": "acima de 7% ao ano",
+      "ticket": 3000000,
+      "expected_return": "pelo menos 6,5% ao ano",
       "urgency": "media",
       "timeline": "próximos 4 meses",
-      "notes": "Já tem salas alugadas; quer diversificar com loja locada para bom inquilino.",
+      "notes": "Já tem conjuntos alugados; quer diversificar com conjunto AAA locado para bom inquilino.",
       "extra": {
         "wants_meeting": true
       }
@@ -146,17 +146,17 @@
       {
         "role": "user",
         "minutes_ago": 2895,
-        "content": "Até 2 milhões, quero mais de 7% ao ano. Sou o Bruno, já tenho umas salas alugadas"
+        "content": "Até 3 milhões, quero pelo menos 6,5% ao ano. Sou o Bruno, já tenho uns conjuntos alugados"
       },
       {
         "role": "assistant",
         "minutes_ago": 2894,
         "agent": "investimento",
         "property_ids": [
-          "IMV-063",
-          "IMV-075"
+          "IMV-006",
+          "IMV-015"
         ],
-        "content": "Perfeito, Bruno! Duas lojas locadas para inquilinos de primeira linha:\n\n- **IMV-063** · Pinheiros, locada para operadora de telefonia, R$ 1,88 mi, rentabilidade estimada de 7,5% a.a.\n- **IMV-075** · Lapa, locada para agência bancária, R$ 2,87 mi, 7,2% a.a.\n\nSão estimativas brutas. Quer ver os números com o nosso especialista em investimentos?"
+        "content": "Perfeito, Bruno! Dois conjuntos locados para inquilinos de primeira linha:\n\n- **IMV-006** · Chácara Santo Antônio, edifício AAA, locado para uma rede de clínicas até 2031, R$ 2,58 mi, rentabilidade estimada de 6,9% a.a.\n- **IMV-015** · Alphaville, locado para uma seguradora até 2028, R$ 1,7 mi, 6,8% a.a.\n\nSão estimativas brutas. Quer ver os números com o nosso especialista em investimentos?"
       },
       {
         "role": "user",
@@ -168,7 +168,7 @@
         "minutes_ago": 2884,
         "agent": "agendamento",
         "appointment": true,
-        "content": "Combinado! ✅ Videochamada com o Carlos Menezes, nosso especialista em imóveis para renda. Ele vai levar a análise dos contratos e das garantias das duas lojas."
+        "content": "Combinado! ✅ Videochamada com o Carlos Menezes, nosso especialista em imóveis para renda. Ele vai levar a análise dos contratos e das garantias dos dois conjuntos."
       }
     ],
     "appointment": {
@@ -176,29 +176,29 @@
       "business_days_ahead": 1,
       "hour": 15,
       "kind": "videochamada",
-      "property_id": "IMV-063",
-      "notes": "Investidor, ticket R$ 2 mi, busca > 7% a.a. com imóvel locado."
+      "property_id": "IMV-006",
+      "notes": "Investidor, ticket R$ 3 mi, busca pelo menos 6,5% a.a. com imóvel locado."
     },
     "summary": {
-      "resumo": "Bruno é investidor e já tem salas alugadas. Quer aplicar até R$ 2 milhões em imóvel comercial já locado, com retorno acima de 7% ao ano, nos próximos 4 meses.",
+      "resumo": "Bruno é investidor e já tem conjuntos alugados. Quer aplicar até R$ 3 milhões em imóvel comercial já locado, com retorno de pelo menos 6,5% ao ano, nos próximos 4 meses.",
       "perfil": "Investidor experiente, decide sozinho, foco em renda com bom inquilino",
       "necessidades": [
         "Imóvel comercial já locado",
-        "Até R$ 2 milhões",
-        "Rentabilidade acima de 7% a.a.",
+        "Até R$ 3 milhões",
+        "Rentabilidade de pelo menos 6,5% a.a.",
         "Inquilino sólido e contrato longo"
       ],
       "imoveis_de_interesse": [
-        "IMV-063",
-        "IMV-075"
+        "IMV-006",
+        "IMV-015"
       ],
       "objecoes_e_duvidas": [
-        "O IMV-075 passa do orçamento"
+        "O contrato do IMV-015 vence em 2028: risco de vacância na renovação"
       ],
       "proximos_passos": [
-        "Apresentar contrato, prazo e garantia do inquilino do IMV-063",
+        "Apresentar contrato, prazo e garantia do inquilino do IMV-006",
         "Simular retorno líquido (IPTU, vacância, reajuste)",
-        "Buscar outra loja locada até R$ 2 mi"
+        "Comparar com o IMV-015, de ticket menor"
       ],
       "abordagem_sugerida": "Conversa objetiva e baseada em números: cap rate, prazo do contrato e solidez do inquilino."
     }
@@ -214,66 +214,67 @@
     },
     "profile": {
       "segment": "comercial",
-      "company": "Grão Fino Café",
-      "job_title": "sócia-fundadora",
+      "company": "Pulsar Pagamentos",
+      "job_title": "COO",
       "decision_maker": "sim",
-      "business_activity": "cafeteria",
+      "business_activity": "sede de fintech",
       "intent": "aluguel",
-      "property_type": "loja",
-      "area_min": 150,
-      "area_max": 220,
-      "budget_max": 35000,
+      "property_type": "andar corporativo",
+      "area_min": 1000,
+      "area_max": 1500,
+      "budget_max": 400000,
       "regions": [
-        "Augusta",
-        "Pinheiros"
+        "Faria Lima",
+        "Vila Olímpia"
       ],
       "requirements": [
-        "permite alimentação",
-        "fachada com vitrine",
-        "alto fluxo de pedestres"
+        "edifício AAA",
+        "andar pronto para uso",
+        "perto do metrô"
       ],
       "urgency": "alta",
-      "timeline": "inaugurar a quarta unidade no próximo trimestre",
-      "notes": "Rede com 3 cafeterias abrindo a quarta unidade.",
-      "extra": {}
+      "timeline": "mudar a sede no próximo trimestre",
+      "notes": "Fintech com 120 pessoas trocando de sede; Camila decide.",
+      "extra": {},
+      "headcount": 120
     },
     "messages": [
       {
         "role": "user",
         "minutes_ago": 95,
-        "content": "Olá, sou a Camila, sócia da Grão Fino Café. Estamos abrindo nossa quarta unidade e procuro uma loja para alugar na Augusta ou em Pinheiros"
+        "content": "Olá, sou a Camila, COO da Pulsar Pagamentos. Vamos trocar de sede e procuro um andar corporativo para alugar na Faria Lima ou na Vila Olímpia"
       },
       {
         "role": "assistant",
         "minutes_ago": 94,
         "agent": "compra_aluguel",
-        "content": "Olá, Camila! Que ótimo momento para a Grão Fino 😊 Augusta e Pinheiros têm muito fluxo de pedestres. Qual tamanho de loja vocês precisam e até quanto pensam em pagar de aluguel?"
+        "content": "Olá, Camila! Que ótimo momento para a Pulsar 😊 Faria Lima e Vila Olímpia concentram as fintechs e têm os melhores edifícios. Quantas pessoas vão trabalhar na sede e até quanto vocês pensam em pagar de aluguel?"
       },
       {
         "role": "user",
         "minutes_ago": 91,
-        "content": "Entre 150 e 220 m², até 35 mil. Precisa permitir alimentação e ter uma boa fachada"
+        "content": "Somos 120, então algo entre 1.000 e 1.500 m², até 400 mil. Precisa ser AAA e já pronto para uso"
       },
       {
         "role": "assistant",
         "minutes_ago": 90,
         "agent": "compra_aluguel",
         "property_ids": [
-          "IMV-068",
-          "IMV-074"
+          "IMV-025",
+          "IMV-026"
         ],
-        "content": "Anotado! Duas lojas que permitem alimentação:\n\n- **IMV-068** · Augusta, 210 m², R$ 35.200/mês, perto do metrô\n- **IMV-074** · Pinheiros, 210 m², R$ 30.800/mês, perto do metrô\n\nA decisão do ponto é sua ou passa pelos outros sócios?"
+        "content": "Anotado! Dois andares AAA, com certificação LEED e prontos para uso:\n\n- **IMV-025** · Faria Lima, 1.100 m², R$ 270.400/mês, 16º andar, perto do metrô\n- **IMV-026** · Vila Olímpia, 1.450 m², R$ 378.200/mês, perto do metrô\n\nA decisão da nova sede é sua ou passa pela diretoria?"
       },
       {
         "role": "user",
         "minutes_ago": 86,
-        "content": "Sou eu que decido. Queremos inaugurar no próximo trimestre. A de Pinheiros tem vitrine?"
+        "content": "Sou eu que decido. Queremos mudar no próximo trimestre. O da Faria Lima comporta 120 pessoas?"
       },
       {
         "role": "assistant",
         "minutes_ago": 85,
         "agent": "compra_aluguel",
-        "content": "Tem sim, com vitrine para a rua e pé-direito alto, ótimo para cafeteria. Quer agendar uma visita? Me diz o dia e o período que ficam melhores pra você."
+        "content": "Comporta sim: com 1.100 m² de planta livre, dá para 120 posições e salas de reunião, na densidade de cerca de 9 m² por pessoa. Quer agendar uma visita? Me diz o dia e o período que ficam melhores pra você."
       }
     ]
   },
@@ -341,21 +342,21 @@
     "broker": "paulo.nogueira@imobiq.example",
     "profile": {
       "segment": "comercial",
-      "company": "Vestuário Online",
+      "company": "Nutriforte Alimentos",
       "job_title": "gerente de operações",
       "decision_maker": "compartilhada",
-      "business_activity": "centro de distribuição de e-commerce de moda",
+      "business_activity": "centro de distribuição de alimentos",
       "intent": "aluguel",
       "property_type": "galpão",
-      "area_min": 2500,
-      "area_max": 3000,
-      "budget_max": 120000,
+      "area_min": 8000,
+      "area_max": 9000,
+      "budget_max": 260000,
       "regions": [
         "Guarulhos"
       ],
       "requirements": [
         "perto da Via Dutra",
-        "4 docas ou mais"
+        "10 docas ou mais"
       ],
       "urgency": "media",
       "timeline": "em 3 meses",
@@ -368,21 +369,21 @@
       {
         "role": "user",
         "minutes_ago": 700,
-        "content": "Boa noite! Sou a Fernanda, gerente de operações da Vestuário Online. Preciso alugar um galpão de 2.500 a 3.000 m² em Guarulhos, perto da Dutra"
+        "content": "Boa noite! Sou a Fernanda, gerente de operações da Nutriforte Alimentos. Preciso alugar um galpão de 8 a 9 mil m² em Guarulhos, perto da Dutra, para o nosso centro de distribuição"
       },
       {
         "role": "assistant",
         "minutes_ago": 699,
         "agent": "compra_aluguel",
         "property_ids": [
-          "IMV-090"
+          "IMV-055"
         ],
-        "content": "Boa noite, Fernanda! Eu sou a Laris, da ImobiQ 😊 Tenho uma opção que encaixa direitinho:\n\n- **IMV-090** · Guarulhos, 2.800 m², galpão logístico que permite e-commerce, R$ 109.600/mês\n\nQuantas docas vocês precisam? E a decisão passa pela diretoria?"
+        "content": "Boa noite, Fernanda! Eu sou a Laris, da ImobiQ 😊 Tenho uma opção que encaixa direitinho:\n\n- **IMV-055** · Guarulhos, 8.500 m² no Parque Logístico Guarulhos II, 14 docas, pé-direito de 13,5 m, acesso pela Via Dutra, R$ 240.100/mês\n\nQuantas docas vocês precisam? E a decisão passa pela diretoria?"
       },
       {
         "role": "user",
         "minutes_ago": 690,
-        "content": "Pelo menos 4 docas. A diretoria aprova no fim. Mas queria negociar uns meses de carência e contrato de 5 anos, dá?"
+        "content": "Pelo menos 10 docas. A diretoria aprova no fim. Mas queria negociar uns meses de carência e contrato de 5 anos, dá?"
       },
       {
         "role": "assistant",
@@ -393,27 +394,27 @@
       }
     ],
     "summary": {
-      "resumo": "Fernanda é gerente de operações da Vestuário Online e procura galpão de 2.500 a 3.000 m² em Guarulhos, perto da Via Dutra, com pelo menos 4 docas, para mudar em cerca de 3 meses. Quer negociar carência e contrato de 5 anos.",
-      "perfil": "E-commerce de moda; Fernanda conduz, a diretoria aprova",
+      "resumo": "Fernanda é gerente de operações da Nutriforte Alimentos e procura galpão de 8 a 9 mil m² em Guarulhos, perto da Via Dutra, com pelo menos 10 docas, para mudar em cerca de 3 meses. Quer negociar carência e contrato de 5 anos.",
+      "perfil": "Distribuidora de alimentos; Fernanda conduz, a diretoria aprova",
       "necessidades": [
-        "Galpão de 2.500 a 3.000 m²",
+        "Galpão de 8 a 9 mil m²",
         "Guarulhos, perto da Via Dutra",
-        "4 docas ou mais",
-        "Permite e-commerce/logística"
+        "10 docas ou mais",
+        "Permite armazenagem"
       ],
       "imoveis_de_interesse": [
-        "IMV-090"
+        "IMV-055"
       ],
       "objecoes_e_duvidas": [
         "Quer carência de alguns meses",
         "Quer contrato de 5 anos"
       ],
       "proximos_passos": [
-        "Consultar o proprietário do IMV-090 sobre carência e contrato de 5 anos",
-        "Enviar proposta para a diretoria da Vestuário Online",
+        "Consultar o proprietário do IMV-055 sobre carência e contrato de 5 anos",
+        "Enviar proposta para a diretoria da Nutriforte",
         "Agendar visita técnica com a equipe de operações"
       ],
-      "abordagem_sugerida": "Montar uma proposta pronta para a diretoria, destacando o acesso à Dutra e o custo por m²."
+      "abordagem_sugerida": "Montar uma proposta pronta para a diretoria, destacando o acesso à Dutra, as 14 docas e o custo por m²."
     }
   },
   {
@@ -428,7 +429,7 @@
       "segment": "comercial",
       "business_activity": "sede de empresa",
       "intent": "aluguel",
-      "property_type": "laje corporativa",
+      "property_type": "andar corporativo",
       "regions": [
         "Faria Lima"
       ],
@@ -438,17 +439,17 @@
       {
         "role": "user",
         "minutes_ago": 4300,
-        "content": "vocês tem laje corporativa pra alugar na faria lima?"
+        "content": "vocês tem andar corporativo pra alugar na faria lima?"
       },
       {
         "role": "assistant",
         "minutes_ago": 4299,
         "agent": "compra_aluguel",
         "property_ids": [
-          "IMV-051",
-          "IMV-045"
+          "IMV-025",
+          "IMV-038"
         ],
-        "content": "Oi! Eu sou a Laris, da ImobiQ 😊 Temos sim! **IMV-051** (1.400 m² na Faria Lima) e **IMV-045** (1.200 m², andar inteiro na Vila Olímpia). Qual o seu nome e para quantas pessoas seria?"
+        "content": "Oi! Eu sou a Laris, da ImobiQ 😊 Temos sim! **IMV-025** (1.100 m², edifício AAA na Faria Lima) e **IMV-038** (1.700 m², no Jardim Europa). Qual o seu nome e para quantas pessoas seria?"
       },
       {
         "role": "user",
@@ -465,13 +466,13 @@
         "role": "followup",
         "minutes_ago": 4280,
         "attempt": 1,
-        "content": "Gustavo, conseguiu ver as lajes com o pessoal? A IMV-051 fica a poucos passos da estação Faria Lima 😉"
+        "content": "Gustavo, conseguiu ver os andares com o pessoal? O IMV-025 fica a poucos passos da estação Faria Lima 😉"
       },
       {
         "role": "followup",
         "minutes_ago": 4260,
         "attempt": 2,
-        "content": "Uma curiosidade: a Faria Lima tem uma das menores taxas de vacância de São Paulo, as boas lajes saem rápido. Quer que eu compare as duas pra você?"
+        "content": "Uma curiosidade: a Faria Lima tem uma das menores taxas de vacância de São Paulo, os bons andares saem rápido. Quer que eu compare os dois pra você?"
       },
       {
         "role": "followup",
@@ -487,16 +488,15 @@
     "status": "qualificado",
     "route": "investimento",
     "profile": {
-      "segment": "comercial",
+      "segment": "residencial",
       "intent": "investimento",
-      "property_type": "sala comercial",
+      "property_type": "studio",
       "regions": [
-        "Santana",
-        "zona norte"
+        "Vila Olímpia"
       ],
       "urgency": "baixa",
       "timeline": "sem pressa, até o fim do ano",
-      "investor_profile": "primeiro investimento, conservadora, quer imóvel já locado",
+      "investor_profile": "primeiro investimento, conservadora, quer renda com aluguel",
       "ticket": 700000,
       "expected_return": "renda mensal estável",
       "extra": {}
@@ -505,27 +505,27 @@
       {
         "role": "user",
         "minutes_ago": 400,
-        "content": "Oi Laris, tenho 700 mil guardados e pensei em comprar uma sala comercial já alugada. Faz sentido?"
+        "content": "Oi Laris, tenho 700 mil guardados e pensei em comprar um imóvel para alugar. Faz sentido?"
       },
       {
         "role": "assistant",
         "minutes_ago": 399,
         "agent": "investimento",
-        "content": "Oi! Faz muito sentido, sim 😊 Sala já locada gera renda desde o primeiro mês. Qual é o seu nome? E é o seu primeiro investimento em imóvel?"
+        "content": "Oi! Faz muito sentido, sim 😊 Imóvel alugado gera renda todo mês. Qual é o seu nome? E é o seu primeiro investimento em imóvel?"
       },
       {
         "role": "user",
         "minutes_ago": 395,
-        "content": "Helena. Sim, é o primeiro, sou bem conservadora. Moro em Santana e gostaria de algo por aqui"
+        "content": "Helena. Sim, é o primeiro, sou bem conservadora. Queria algo perto do metrô, que seja fácil de alugar"
       },
       {
         "role": "assistant",
         "minutes_ago": 394,
         "agent": "investimento",
         "property_ids": [
-          "IMV-025"
+          "IMV-076"
         ],
-        "content": "Ótimo, Helena! Tenho uma opção bem alinhada com o seu perfil:\n\n- **IMV-025** · Santana, sala de 65 m² locada para uma clínica odontológica, perto do metrô, R$ 630 mil, rentabilidade estimada de 6,9% a.a.\n\nClínicas costumam ficar muitos anos no mesmo endereço, o que dá estabilidade. Quer conversar com o nosso especialista em investimentos?"
+        "content": "Ótimo, Helena! Tenho uma opção bem alinhada com o seu perfil:\n\n- **IMV-076** · Vila Olímpia, studio de 35 m² mobiliado, perto do metrô, R$ 680 mil, rentabilidade estimada de 5,5% a.a.\n\nStudios perto dos polos de escritórios têm muita procura de aluguel, o que dá estabilidade. Quer conversar com o nosso especialista em investimentos?"
       },
       {
         "role": "user",

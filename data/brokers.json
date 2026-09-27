@@ -5,8 +5,12 @@
     "phone": "+55 11 90000-0001",
     "role": "corretor",
     "zones": [],
-    "specialties": ["laje corporativa", "conjunto comercial", "prédio comercial"],
-    "bio": "Especialista em escritórios corporativos: lajes, conjuntos e prédios inteiros na Faria Lima, Paulista, Berrini e Alphaville."
+    "specialties": [
+      "andar corporativo",
+      "laje corporativa",
+      "prédio comercial"
+    ],
+    "bio": "Especialista em sedes corporativas: andares, lajes e prédios inteiros na Faria Lima, JK, Berrini, Chucri Zaidan e Alphaville."
   },
   {
     "name": "Rafael Almeida",
@@ -14,8 +18,11 @@
     "phone": "+55 11 90000-0002",
     "role": "corretor",
     "zones": [],
-    "specialties": ["sala comercial", "conjunto comercial"],
-    "bio": "Atende profissionais liberais e pequenas empresas: salas comerciais, consultórios e clínicas."
+    "specialties": [
+      "conjunto comercial",
+      "sala comercial"
+    ],
+    "bio": "Atende pequenas e médias empresas, clínicas e profissionais liberais: conjuntos comerciais prontos para uso."
   },
   {
     "name": "Juliana Pereira",
@@ -23,8 +30,13 @@
     "phone": "+55 11 90000-0003",
     "role": "corretor",
     "zones": [],
-    "specialties": ["loja"],
-    "bio": "Especialista em lojas de rua e pontos comerciais para varejo, alimentação e serviços."
+    "specialties": [
+      "apartamento",
+      "cobertura",
+      "casa",
+      "studio"
+    ],
+    "bio": "Especialista em residenciais de alto padrão: apartamentos, coberturas e casas na Vila Nova Conceição, Itaim, Jardins e Cidade Jardim."
   },
   {
     "name": "Paulo Nogueira",
@@ -32,8 +44,10 @@
     "phone": "+55 11 90000-0004",
     "role": "corretor",
     "zones": [],
-    "specialties": ["galpão"],
-    "bio": "Galpões logísticos e industriais em São Paulo e região metropolitana (Guarulhos, Cajamar, Osasco)."
+    "specialties": [
+      "galpão"
+    ],
+    "bio": "Galpões logísticos e industriais em condomínios na Grande SP e no interior (Guarulhos, Cajamar, Jundiaí, Extrema)."
   },
   {
     "name": "Carlos Menezes",
@@ -41,7 +55,14 @@
     "phone": "+55 11 90000-0005",
     "role": "especialista_investimento",
     "zones": [],
-    "specialties": ["sala comercial", "conjunto comercial", "laje corporativa", "loja", "galpão", "prédio comercial"],
-    "bio": "Especialista em imóveis comerciais para renda: imóveis locados, cap rate, contratos e garantias."
+    "specialties": [
+      "conjunto comercial",
+      "andar corporativo",
+      "laje corporativa",
+      "prédio comercial",
+      "galpão",
+      "studio"
+    ],
+    "bio": "Especialista em imóveis para renda: imóveis locados, cap rate, contratos atípicos (built to suit, sale-leaseback) e garantias."
   }
 ]

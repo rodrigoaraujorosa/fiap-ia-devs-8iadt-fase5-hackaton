@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.models import Broker, Lead, Slot
 from app.models.enums import AppointmentStatus, BrokerRole, LeadStatus
 from app.services import scheduling
+from app.services.property_search import OFFICE
 
 
 @pytest.fixture
@@ -31,13 +32,13 @@ def test_pick_brokers_by_specialty_and_role(db, lead):
     lead.property_type = "galpão"
     assert [b.name for b in scheduling.pick_brokers(db, lead, "visita")] == ["Paulo Nogueira"]
 
-    loja = scheduling.pick_brokers(db, lead, "visita", property_id="IMV-060")  # o imóvel escolhido manda
-    assert all("loja" in b.specialties for b in loja)
+    home = scheduling.pick_brokers(db, lead, "visita", property_id="IMV-070")  # o imóvel escolhido manda
+    assert [b.name for b in home] == ["Juliana Pereira"]  # apartamento: residencial de alto padrão
 
-    lead.property_type = "escritório"  # sinônimo: sala, conjunto ou laje
+    lead.property_type = "escritório"  # sinônimo: conjunto, andar ou laje
     office = scheduling.pick_brokers(db, lead, "visita")
     assert office and all(b.role == BrokerRole.CORRETOR for b in office)
-    assert all({"sala comercial", "conjunto comercial", "laje corporativa"} & set(b.specialties) for b in office)
+    assert all(set(OFFICE) & set(b.specialties) for b in office)
 
     lead.intent = "investimento"
     specialists = scheduling.pick_brokers(db, lead, "reuniao")
