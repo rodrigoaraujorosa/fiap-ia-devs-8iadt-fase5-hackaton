@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     timezone: str = "America/Sao_Paulo"
     slot_days_ahead: int = 10
 
+    # Painel de observabilidade: o Langfuse registra custos em dólar; conversão aproximada para real
+    usd_brl: float = 5.40
+
     # Observabilidade (Langfuse) — vazio = desabilitado
     langfuse_public_key: str | None = None
     langfuse_secret_key: str | None = None

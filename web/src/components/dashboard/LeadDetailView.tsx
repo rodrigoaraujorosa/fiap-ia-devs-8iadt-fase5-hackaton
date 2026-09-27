@@ -1,11 +1,11 @@
 "use client";
 
-import { ArrowLeft, BellRing, CalendarCheck, Globe, Loader2, Mail, MailCheck, MailWarning, MailX, Send, Sparkles, UserRound } from "lucide-react";
+import { Activity, ArrowLeft, BellRing, ExternalLink, CalendarCheck, Globe, Loader2, Mail, MailCheck, MailWarning, MailX, Send, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useState } from "react";
 
 import { Card, EmptyState, Markdown, ScoreMeter, StatusBadge, Tag, TemperatureBadge } from "@/components/ui";
-import { apiGet, apiPost, type EmailLog, type LeadDetail, type LeadSource, type Summary } from "@/lib/api";
+import { apiGet, apiPost, type EmailLog, type LangfuseLinks, type LeadDetail, type LeadSource, type Summary } from "@/lib/api";
 import { AGENT_LABEL, DECISION_LABEL, FIELD_LABEL, INTENT_LABEL, compactBrl, dateTime, relativeTime, spaceLabel } from "@/lib/format";
 
 function SummaryBlock({ summary }: { summary: Summary }) {
@@ -143,6 +143,14 @@ export function LeadDetailView({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
+  const [langfuse, setLangfuse] = useState<LangfuseLinks | null>(null);
+
+  // cada conversa é uma sessão no Langfuse: link direto para os traces deste lead
+  useEffect(() => {
+    apiGet<LangfuseLinks>("/observability/links")
+      .then(setLangfuse)
+      .catch(() => setLangfuse(null));
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -226,6 +234,17 @@ export function LeadDetailView({ id }: { id: string }) {
         <div className="w-40">
           <ScoreMeter score={lead.score} />
         </div>
+        {langfuse?.session_url && (
+          <a
+            href={langfuse.session_url.replace("{session_id}", lead.id)}
+            target="_blank"
+            rel="noreferrer"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink hover:border-brand"
+            title="Traces desta conversa: cada turno, chamada ao Claude, ferramenta, custo e latência"
+          >
+            <Activity aria-hidden size={14} /> Ver no Langfuse <ExternalLink aria-hidden size={12} />
+          </a>
+        )}
       </div>
       <p className="text-sm text-ink-2">
         {channelLabel(lead)}

@@ -181,6 +181,37 @@ export type RateLimitConfig = {
   daily_total: number;
 };
 export type WidgetConfig = { restrict: boolean; allowed_domains: string[] };
+
+export type LangfuseLinks = { enabled: boolean; project_url: string | null; session_url: string | null };
+export type InsightsPeriod = "24h" | "7d" | "30d";
+/** Painel de observabilidade: custos em US$ (como o Langfuse registra). */
+export type Insights = {
+  enabled: boolean;
+  period: InsightsPeriod;
+  generated_at: string;
+  usd_brl: number;
+  environment: string;
+  totals: {
+    cost: number;
+    llm_calls: number;
+    turns: number;
+    conversations: number;
+    appointments: number;
+    qualified: number;
+    cost_per_conversation: number | null;
+    cost_per_appointment: number | null;
+    cost_per_qualified: number | null;
+  };
+  latency: { p50_ms: number; p95_ms: number };
+  cache: { hit_rate: number; savings: number };
+  tokens: { input: number; cache_read: number; cache_creation: number; output: number };
+  by_agent: { name: string; cost: number; calls: number; p50_ms: number }[];
+  by_model: { model: string; cost: number; calls: number }[];
+  daily: { date: string; cost: number }[];
+  tools: { name: string; calls: number }[];
+  injections: number;
+  links: LangfuseLinks;
+};
 export type AuthStatus = { required: boolean; authenticated: boolean };
 
 export type FollowupConfig = {

@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react";
+import { Activity, Settings } from "lucide-react";
 import Link from "next/link";
 
 import { Logo } from "@/components/Brand";
@@ -21,12 +21,20 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             <span className="hidden sm:inline">Dashboard do corretor</span>
           </Link>
           <Link
-            href="/configuration"
-            aria-label="Configurações"
+            href="/observability"
+            aria-label="Observabilidade"
             className="ml-auto inline-flex items-center gap-1.5 text-sm text-ink-2 hover:text-ink"
           >
+            <Activity className="size-4" aria-hidden />
+            <span className="hidden md:inline">Observabilidade</span>
+          </Link>
+          <Link
+            href="/configuration"
+            aria-label="Configurações"
+            className="inline-flex items-center gap-1.5 text-sm text-ink-2 hover:text-ink"
+          >
             <Settings className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Configurações</span>
+            <span className="hidden md:inline">Configurações</span>
           </Link>
         </nav>
       </header>

@@ -9,6 +9,7 @@ from app.core.config import Settings
 # Variáveis de ambiente têm prioridade sobre o .env; isso precisa rodar antes de importar o app.
 os.environ.update(SMTP_HOST="127.0.0.1", SMTP_PORT="1025", SMTP_USER="", SMTP_PASSWORD="", SMTP_SSL="false",
                   SMTP_STARTTLS="false")  # fmt: skip
+os.environ["ENVIRONMENT"] = "test"  # traces dos testes separados no Langfuse (o painel mostra só o ambiente do app)
 os.environ["ADMIN_PASSWORD"] = ""  # a senha de administrador do .env não vale nos testes (test_admin liga quando quer)
 
 # Banco próprio dos testes (<banco>_test, no mesmo Postgres): nenhum teste mexe nos leads nem nas configurações

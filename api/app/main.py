@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from app.agents import runtime
 from app.agents.llm import AIPausedError
 from app.api.routes import admin, auth, chat, health, leads, properties, telegram, widget
+from app.api.routes import observability as observability_routes
 from app.core import observability
 from app.core.config import get_settings
 from app.jobs import scheduler
@@ -53,3 +54,4 @@ app.include_router(leads.router)
 app.include_router(admin.router)
 app.include_router(telegram.router)
 app.include_router(widget.router)
+app.include_router(observability_routes.router)

@@ -6,8 +6,6 @@ import {
   DatabaseZap,
   ExternalLink,
   FlaskConical,
-  Lock,
-  LogOut,
   Mail,
   Moon,
   Play,
@@ -15,20 +13,18 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import { AdminGate } from "@/components/AdminGate";
 import { CHAT_STORAGE_KEY } from "@/components/chat/ChatApp";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 import { FeedbackLine, Field, Switch, buttonClass, inputClass, type Feedback } from "@/components/settings/controls";
 import { Card } from "@/components/ui";
 import {
-  ApiError,
   apiGet,
   apiPost,
   apiPut,
-  setAdminToken,
   type AIConfig,
-  type AuthStatus,
   type DemoResetResult,
   type EmailConfig,
   type EmailConfigOut,
@@ -746,103 +742,15 @@ function AISettings() {
   );
 }
 
-function AdminLogin({ onLogin }: { onLogin: () => void }) {
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const { token } = await apiPost<{ token: string }>("/auth/login", { password });
-      setAdminToken(token);
-      onLogin();
-    } catch (err) {
-      setError(err instanceof ApiError && err.status === 401 ? "Senha incorreta." : "Não foi possível entrar agora.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Card title="Acesso restrito">
-      <form onSubmit={submit} className="space-y-3">
-        <p className="flex items-center gap-1.5 text-sm text-ink-2">
-          <Lock className="size-4 text-muted" aria-hidden /> As configurações são protegidas pela senha de administrador.
-        </p>
-        <Field label="Senha" htmlFor="admin-password">
-          <input
-            id="admin-password"
-            type="password"
-            autoComplete="current-password"
-            autoFocus
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
-          />
-        </Field>
-        <button type="submit" disabled={busy || !password} className={`${buttonClass} bg-brand text-white hover:opacity-90`}>
-          {busy ? "Entrando…" : "Entrar"}
-        </button>
-        {error && <FeedbackLine feedback={{ tone: "error", text: error }} />}
-      </form>
-    </Card>
-  );
-}
-
 export function Configuration() {
-  const [auth, setAuth] = useState<AuthStatus | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  const check = useCallback(async () => {
-    try {
-      setAuth(await apiGet<AuthStatus>("/auth/status"));
-      setFailed(false);
-    } catch {
-      setFailed(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    const first = window.setTimeout(check, 0);
-    return () => window.clearTimeout(first);
-  }, [check]);
-
-  function logout() {
-    setAdminToken(null);
-    void check();
-  }
-
-  const open = auth && (!auth.required || auth.authenticated);
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold text-ink">Configurações</h1>
-          <p className="text-sm text-ink-2">Ajustes que valem na hora, sem reiniciar a API. O .env define só os valores iniciais.</p>
-        </div>
-        {open && auth.required && (
-          <button type="button" onClick={logout} className={`${buttonClass} border border-line text-ink-2 hover:text-ink`}>
-            <LogOut className="size-4" aria-hidden /> Sair
-          </button>
-        )}
-      </div>
-      {failed && <p className="text-sm text-danger">Não consegui falar com a API. Ela está rodando?</p>}
-      {!auth && !failed && <div className="h-28 animate-pulse rounded-lg bg-surface-2" />}
-      {auth && !open && <AdminLogin onLogin={check} />}
-      {open && (
-        <>
-          <AISettings />
-          <SecuritySettings />
-          <FollowupSettings />
-          <EmailSettings />
-          <TelegramSettings />
-          <DemoReset />
-        </>
-      )}
-    </div>
+    <AdminGate title="Configurações" subtitle="Ajustes que valem na hora, sem reiniciar a API. O .env define só os valores iniciais.">
+      <AISettings />
+      <SecuritySettings />
+      <FollowupSettings />
+      <EmailSettings />
+      <TelegramSettings />
+      <DemoReset />
+    </AdminGate>
   );
 }
