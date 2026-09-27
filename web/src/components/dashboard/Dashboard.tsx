@@ -7,10 +7,26 @@ import { useCallback, useEffect, useState } from "react";
 import { BarList } from "@/components/BarList";
 import { Card, EmptyState, ScoreMeter, StatTile, StatusBadge, TemperatureBadge } from "@/components/ui";
 import { apiGet, type Appointment, type Lead, type Metrics } from "@/lib/api";
-import { INTENT_LABEL, STATUS_LABEL, STATUS_ORDER, compactBrl, dateTime, relativeTime, spaceLabel } from "@/lib/format";
+import {
+  CHANNEL_JOURNEY_LABEL,
+  INTENT_LABEL,
+  STATUS_LABEL,
+  STATUS_ORDER,
+  channelJourney,
+  compactBrl,
+  dateTime,
+  relativeTime,
+  spaceLabel,
+} from "@/lib/format";
 
 const REFRESH_MS = 10_000;
-const CHANNEL_TAG: Record<string, string> = { telegram: "via Telegram", site: "via site" };
+const CHANNEL_TAG: Record<string, string> = {
+  telegram: "via Telegram",
+  site: "via site",
+  site_telegram: "site → Telegram",
+  web_telegram: "chat → Telegram",
+};
+const CHANNEL_ORDER = ["web", "site", "telegram", "site_telegram", "web_telegram"];
 const FILTERS = {
   status: { label: "Etapa", options: STATUS_ORDER.map((s) => [s, STATUS_LABEL[s]] as const) },
   temperature: { label: "Temperatura", options: [["quente", "Quente"], ["morno", "Morno"], ["frio", "Frio"]] as const },
@@ -72,6 +88,11 @@ export function Dashboard() {
   const hot = metrics?.by_temperature.quente ?? 0;
   const funnel = STATUS_ORDER.map((s) => ({ key: s, label: STATUS_LABEL[s], value: metrics?.by_status[s] ?? 0 }));
   const intents = Object.entries(INTENT_LABEL).map(([k, label]) => ({ key: k, label, value: metrics?.by_intent[k] ?? 0 }));
+  const channels = CHANNEL_ORDER.filter((k) => k !== "web_telegram" || metrics?.by_channel[k]).map((k) => ({
+    key: k,
+    label: CHANNEL_JOURNEY_LABEL[k],
+    value: metrics?.by_channel[k] ?? 0,
+  }));
 
   return (
     <div className={`space-y-4 transition-opacity ${loading && metrics ? "opacity-80" : ""}`}>
@@ -123,12 +144,16 @@ export function Dashboard() {
         />
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Card title="Funil de atendimento">
           <BarList rows={funnel} total={metrics?.total_leads} />
         </Card>
         <Card title="Intenção dos leads">
           <BarList rows={intents} total={metrics?.total_leads} />
+        </Card>
+        <Card title="Canal de entrada">
+          <BarList rows={channels} total={metrics?.total_leads} />
+          <p className="mt-2 text-xs text-muted">Seta: começou num canal e continuou no Telegram.</p>
         </Card>
         <Card
           title="Próximos agendamentos"
@@ -201,9 +226,9 @@ export function Dashboard() {
                       <Link href={`/dashboard/leads/${lead.id}`} className="font-medium text-ink hover:text-brand">
                         {lead.name ?? "Sem nome"}
                       </Link>
-                      {(lead.company || lead.channel !== "web") && (
+                      {(lead.company || CHANNEL_TAG[channelJourney(lead)]) && (
                         <p className="text-xs text-ink-2">
-                          {[lead.company, CHANNEL_TAG[lead.channel]].filter(Boolean).join(" · ")}
+                          {[lead.company, CHANNEL_TAG[channelJourney(lead)]].filter(Boolean).join(" · ")}
                         </p>
                       )}
                       {lead.next_followup_at && (

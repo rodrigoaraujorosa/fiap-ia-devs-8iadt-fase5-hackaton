@@ -231,7 +231,8 @@ def _claim_link(db, token: str, chat_id: int, user: dict) -> Lead | None:
         db.commit()
         return None
     _unlink_chat(db, chat_id, keep=lead.id)
-    lead.extra = {**extra, "telegram": _profile(chat_id, user)}
+    # linked_at: quando a conversa passou do site para o Telegram (dashboard mostra a transição)
+    lead.extra = {**extra, "telegram": {**_profile(chat_id, user), "linked_at": datetime.now(UTC).isoformat()}}
     db.commit()
     return lead
 

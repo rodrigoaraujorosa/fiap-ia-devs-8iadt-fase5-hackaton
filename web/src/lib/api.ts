@@ -80,7 +80,12 @@ export type Lead = {
     phone_declined?: boolean;
     source?: LeadSource;
     viewing?: string;
-    telegram?: { chat_id: number; username?: string | null; first_name?: string | null };
+    telegram?: {
+      chat_id: number | null;
+      username?: string | null;
+      first_name?: string | null;
+      linked_at?: string; // quando a conversa passou do site/chat para o Telegram
+    };
   };
   score: number;
   temperature: "quente" | "morno" | "frio";
@@ -158,6 +163,7 @@ export type Metrics = {
   by_status: Record<string, number>;
   by_temperature: Record<string, number>;
   by_intent: Record<string, number>;
+  by_channel: Record<string, number>;
   avg_score: number;
   qualification_rate: number;
   upcoming_appointments: number;

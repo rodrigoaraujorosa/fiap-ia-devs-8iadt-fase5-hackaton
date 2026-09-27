@@ -3,6 +3,8 @@
     "name": "Ana Souza",
     "phone": "+55 11 98111-2001",
     "status": "agendado",
+    "channel": "site",
+    "page_title": "Conjuntos comerciais para alugar",
     "route": "agendamento",
     "profile": {
       "segment": "comercial",
@@ -117,6 +119,12 @@
     "name": "Bruno Lima",
     "phone": "+55 11 98111-2002",
     "status": "agendado",
+    "channel": "site",
+    "page_title": "Galpões logísticos",
+    "telegram": {
+      "from": 2,
+      "username": "bruno_translima"
+    },
     "route": "investimento",
     "profile": {
       "segment": "comercial",
@@ -207,6 +215,8 @@
     "name": "Camila Rocha",
     "phone": "+55 11 98111-2003",
     "status": "qualificado",
+    "channel": "site",
+    "page_title": "Andar corporativo no Itaim Bibi",
     "route": "compra_aluguel",
     "followup": {
       "count": 0,
@@ -282,6 +292,7 @@
     "name": "Diego Martins",
     "phone": "+55 11 98111-2004",
     "status": "em_qualificacao",
+    "channel": "web",
     "route": "compra_aluguel",
     "followup": {
       "count": 1,
@@ -338,6 +349,10 @@
     "name": "Fernanda Alves",
     "phone": "+55 11 98111-2005",
     "status": "encaminhado",
+    "channel": "telegram",
+    "telegram": {
+      "username": "fernanda_alves"
+    },
     "route": "compra_aluguel",
     "broker": "paulo.nogueira@imobiq.example",
     "profile": {
@@ -421,6 +436,7 @@
     "name": "Gustavo Pereira",
     "phone": "+55 11 98111-2006",
     "status": "perdido",
+    "channel": "web",
     "route": "compra_aluguel",
     "followup": {
       "count": 3
@@ -486,6 +502,12 @@
     "name": "Helena Castro",
     "phone": "+55 11 98111-2007",
     "status": "qualificado",
+    "channel": "site",
+    "page_title": "Imóveis residenciais de alto padrão",
+    "telegram": {
+      "from": 2,
+      "username": null
+    },
     "route": "investimento",
     "profile": {
       "segment": "residencial",
@@ -537,6 +559,8 @@
   {
     "phone": "+55 11 98111-2008",
     "status": "novo",
+    "channel": "site",
+    "page_title": "Imóveis corporativos em São Paulo",
     "route": "compra_aluguel",
     "profile": {
       "extra": {}

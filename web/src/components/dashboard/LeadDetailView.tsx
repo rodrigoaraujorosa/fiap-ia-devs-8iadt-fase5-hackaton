@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, BellRing, CalendarCheck, Globe, Loader2, Mail, MailCheck, MailWarning, MailX, Sparkles, UserRound } from "lucide-react";
+import { ArrowLeft, BellRing, CalendarCheck, Globe, Loader2, Mail, MailCheck, MailWarning, MailX, Send, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 import { Card, EmptyState, Markdown, ScoreMeter, StatusBadge, Tag, TemperatureBadge } from "@/components/ui";
 import { apiGet, apiPost, type EmailLog, type LeadDetail, type LeadSource, type Summary } from "@/lib/api";
@@ -210,6 +210,8 @@ export function LeadDetailView({ id }: { id: string }) {
     ["Contexto", lead.extra?.preferences ?? null],
     ["Motivo do encaminhamento", lead.extra?.handoff_reason ?? null],
   ];
+  // conversa que começou no site/chat e continuou no Telegram: divisória no ponto da troca
+  const linkedAt = lead.channel !== "telegram" ? lead.extra?.telegram?.linked_at : undefined;
 
   return (
     <div className="space-y-4">
@@ -227,7 +229,10 @@ export function LeadDetailView({ id }: { id: string }) {
       </div>
       <p className="text-sm text-ink-2">
         {channelLabel(lead)}
-        {lead.extra?.telegram && lead.channel !== "telegram" ? " · continuou no Telegram" : ""} · criado{" "}
+        {lead.extra?.telegram && lead.channel !== "telegram"
+          ? ` · continuou no Telegram${lead.extra.telegram.linked_at ? ` em ${dateTime(lead.extra.telegram.linked_at)}` : ""}`
+          : ""}{" "}
+        · criado{" "}
         {relativeTime(lead.created_at)} · último contato {relativeTime(lead.last_message_at)}
         {lead.assigned_broker && (
           <>
@@ -308,10 +313,22 @@ export function LeadDetailView({ id }: { id: string }) {
 
         <Card title={`Conversa (${lead.messages.length} mensagens)`}>
           <ol className="max-h-[70vh] space-y-2 overflow-y-auto rounded-lg bg-chat p-3">
-            {lead.messages.map((m) => {
+            {lead.messages.map((m, i) => {
               const mine = m.role === "user";
+              const switched =
+                linkedAt &&
+                new Date(m.created_at) >= new Date(linkedAt) &&
+                (i === 0 || new Date(lead.messages[i - 1].created_at) < new Date(linkedAt));
               return (
-                <li key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                <Fragment key={m.id}>
+                  {switched && (
+                    <li className="flex items-center gap-2 py-1 text-[11px] font-medium text-brand" role="separator">
+                      <span className="h-px flex-1 bg-line" />
+                      <Send aria-hidden size={11} /> continuou no Telegram · {dateTime(linkedAt)}
+                      <span className="h-px flex-1 bg-line" />
+                    </li>
+                  )}
+                <li className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                   <div
                     className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm text-ink shadow-sm ${
                       mine ? "rounded-br-sm bg-bubble-user" : "rounded-bl-sm bg-bubble-agent"
@@ -329,6 +346,7 @@ export function LeadDetailView({ id }: { id: string }) {
                     <p className="mt-1 text-right text-[10px] text-muted">{dateTime(m.created_at)}</p>
                   </div>
                 </li>
+                </Fragment>
               );
             })}
           </ol>

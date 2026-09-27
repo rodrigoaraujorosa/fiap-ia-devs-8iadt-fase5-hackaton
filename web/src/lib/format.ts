@@ -26,6 +26,19 @@ export const INTENT_LABEL: Record<string, string> = {
   indefinido: "Indefinido",
 };
 
+/** Canal de entrada + transição (chave igual à de by_channel em /dashboard/metrics). */
+export const CHANNEL_JOURNEY_LABEL: Record<string, string> = {
+  web: "Chat ImobiQ",
+  site: "Só site",
+  telegram: "Só Telegram",
+  site_telegram: "Site → Telegram",
+  web_telegram: "ImobiQ → Telegram",
+};
+
+export function channelJourney(lead: { channel: string; extra?: { telegram?: unknown } | null }): string {
+  return lead.extra?.telegram && lead.channel !== "telegram" ? `${lead.channel}_telegram` : lead.channel;
+}
+
 export const AGENT_LABEL: Record<string, string> = {
   compra_aluguel: "Especialista em locação e compra",
   investimento: "Especialista em investimentos",

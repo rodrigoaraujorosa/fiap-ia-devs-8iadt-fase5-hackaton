@@ -110,6 +110,14 @@ def dashboard_metrics(db: Session = Depends(get_db)):
         return dict(db.execute(select(column, func.count()).where(active).group_by(column)).all())
 
     by_status = count_by(Lead.status)
+    # canal de entrada + transição: quem começou no site ou no chat e continuou no Telegram vira "<canal>_telegram"
+    by_channel: dict[str, int] = {}
+    has_telegram = Lead.extra.has_key("telegram")
+    for channel, telegram, n in db.execute(
+        select(Lead.channel, has_telegram, func.count()).where(active).group_by(Lead.channel, has_telegram)
+    ).all():
+        key = f"{channel}_telegram" if telegram and channel != "telegram" else str(channel)
+        by_channel[key] = by_channel.get(key, 0) + n
     total = sum(by_status.values())
     advanced = sum(by_status.get(s, 0) for s in ("qualificado", "agendado", "encaminhado"))
     since = datetime.now(UTC) - timedelta(hours=24)
@@ -119,6 +127,7 @@ def dashboard_metrics(db: Session = Depends(get_db)):
         "by_status": by_status,
         "by_temperature": count_by(Lead.temperature),
         "by_intent": count_by(Lead.intent),
+        "by_channel": by_channel,
         "avg_score": round(db.scalar(select(func.avg(Lead.score)).where(active)) or 0),
         "qualification_rate": round(advanced / total, 3) if total else 0,
         "upcoming_appointments": db.scalar(

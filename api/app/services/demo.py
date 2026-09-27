@@ -72,14 +72,34 @@ def _message_meta(m: dict, lead: Lead, appointment: Appointment | None) -> dict:
     return meta
 
 
+def _channel_extra(spec: dict, at) -> dict:
+    """Origem do lead na demo: site da imobiliária (widget), Telegram, ou site que continuou no Telegram."""
+    extra: dict = {}
+    channel = spec.get("channel", "web")
+    if channel in ("site", "telegram"):
+        brand = get_settings().telegram_brand
+        extra["source"] = {"brand": brand, **({"page_title": f"{spec['page_title']} · {brand}"}
+                                              if spec.get("page_title") else {})}  # fmt: skip
+    if tg := spec.get("telegram"):
+        first_name = (spec.get("name") or "").split(" ")[0] or None
+        # chat_id vazio: lead fictício, nada é enviado ao Telegram (follow-up incluído)
+        extra["telegram"] = {"chat_id": None, "username": tg.get("username"), "first_name": first_name}
+        if channel != "telegram":
+            linked = at(spec["messages"][tg["from"]]) - timedelta(seconds=30)
+            extra["telegram"]["linked_at"] = linked.isoformat()
+    return extra
+
+
 def _create_lead(db: Session, spec: dict, brokers: dict[str, Broker], now: datetime) -> Lead:
     msgs = spec["messages"]
 
     def at(m: dict) -> datetime:
         return now - timedelta(minutes=m["minutes_ago"])
 
-    lead = Lead(channel=Channel.WEB, name=spec.get("name"), phone=spec["phone"],
-                **{"regions": [], "extra": {}, **spec["profile"]})  # fmt: skip
+    profile = dict(spec["profile"])
+    extra = {**profile.pop("extra", {}), **_channel_extra(spec, at)}
+    lead = Lead(channel=Channel(spec.get("channel", "web")), name=spec.get("name"), phone=spec["phone"],
+                **{"regions": [], **profile}, extra=extra)  # fmt: skip
     lead.created_at = at(msgs[0])
     lead.last_message_at = at(msgs[-1])
     lead.last_lead_message_at = max(at(m) for m in msgs if m["role"] == MessageRole.USER)
