@@ -63,6 +63,19 @@ class Settings(BaseSettings):
     # Senha da área de administração (configurações, reset da demo). Vazia = sem senha (uso local).
     admin_password: str | None = None
 
+    # Limite de mensagens (valores iniciais: a tela /configuration altera em tempo real)
+    rate_limit_enabled: bool = True
+    rate_limit_conversation_hour: int = 40  # mensagens de uma conversa por hora
+    rate_limit_ip_hour: int = 80  # mensagens de um mesmo IP por hora (várias conversas somadas)
+    rate_limit_sessions_ip_hour: int = 10  # conversas novas por IP por hora
+    rate_limit_daily_total: int = 1500  # teto de mensagens por dia no total (trava de custo)
+    # Atrás de um proxy reverso (Caddy na AWS), o IP do visitante vem no X-Forwarded-For
+    trust_proxy_headers: bool = False
+
+    # Domínios que podem embutir o widget (valores iniciais: a tela /configuration altera em tempo real)
+    widget_restrict_domains: bool = False
+    widget_allowed_domains: list[str] = ["localhost:5500", "127.0.0.1:5500"]
+
     # Agenda
     timezone: str = "America/Sao_Paulo"
     slot_days_ahead: int = 10

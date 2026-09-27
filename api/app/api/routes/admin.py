@@ -12,15 +12,21 @@ from app.services.app_config import (
     AIConfig,
     EmailConfig,
     FollowupConfig,
+    RateLimitConfig,
     TelegramConfig,
+    WidgetConfig,
     get_ai_config,
     get_email_config,
     get_followup_config,
+    get_rate_limit_config,
     get_telegram_config,
+    get_widget_config,
     save_ai_config,
     save_email_config,
     save_followup_config,
+    save_rate_limit_config,
     save_telegram_config,
+    save_widget_config,
 )
 from app.services.demo import reset_demo
 from app.services.mailer import send_test_email, smtp_info
@@ -61,6 +67,29 @@ def update_ai_config(config: AIConfig, db: Session = Depends(get_db)):
     """Desligada, nada chama o Claude: o chat e o Telegram respondem um recado fixo e registram a mensagem,
     e o follow-up e os resumos automáticos param. Vale na hora."""
     return save_ai_config(db, config)
+
+
+@router.get("/config/rate-limit", response_model=RateLimitConfig)
+def read_rate_limit_config(db: Session = Depends(get_db)):
+    """Limites de mensagens por conversa, por IP, conversas novas por IP e teto diário."""
+    return get_rate_limit_config(db)
+
+
+@router.put("/config/rate-limit", response_model=RateLimitConfig)
+def update_rate_limit_config(config: RateLimitConfig, db: Session = Depends(get_db)):
+    return save_rate_limit_config(db, config)
+
+
+@router.get("/config/widget", response_model=WidgetConfig)
+def read_widget_config(db: Session = Depends(get_db)):
+    """Domínios autorizados a embutir o widget da Laris."""
+    return get_widget_config(db)
+
+
+@router.put("/config/widget", response_model=WidgetConfig)
+def update_widget_config(config: WidgetConfig, db: Session = Depends(get_db)):
+    """Vale em até 30s: o app web renova a regra frame-ancestors do /embed a cada 30s."""
+    return save_widget_config(db, config)
 
 
 @router.get("/config/followup", response_model=FollowupConfig)

@@ -121,6 +121,16 @@ A mesma Laris atende pelo Telegram ([@imobiq_laris_bot](https://t.me/imobiq_lari
 
 Configuração: crie o bot no **@BotFather** e coloque o token em `TELEGRAM_BOT_TOKEN` no `.env`. Localmente a API usa **long polling** (não precisa de URL pública). Em produção, use `TELEGRAM_MODE=webhook` com `TELEGRAM_WEBHOOK_URL` (HTTPS) e `TELEGRAM_WEBHOOK_SECRET`: o Telegram passa a chamar `POST /webhooks/telegram`, e a API confere o segredo no cabeçalho de cada chamada. O token nunca aparece nos logs.
 
+## 🔒 Segurança
+
+- **Área de administração com senha** (`ADMIN_PASSWORD`): configurações e ações de demo exigem login; token assinado de 12 horas, invalidado ao trocar a senha.
+- **Liga/desliga das LLMs:** fora das demonstrações, nada chama o Claude; o chat pede nome e telefone num formulário.
+- **Limite de mensagens** (tela de configurações, em tempo real): por conversa, por IP, conversas novas por IP e um **teto diário** que funciona como trava de custo (acima dele, a Laris pausa a IA e pede o contato). Vale para o chat, o widget e o Telegram.
+- **Domínios do widget** (tela de configurações): com a restrição ligada, o `widget.js` não mostra a bolha em sites fora da lista e o navegador bloqueia o chat embutido pela regra `frame-ancestors` do `/embed`; a API também recusa conversas vindas de outras páginas.
+- **Prompt injection:** a mensagem do cliente é tratada como conversa, nunca como instrução; a Laris não revela o prompt, não sai do tema imobiliário e não promete condições fora da base. As ferramentas só consultam imóveis, a agenda e o próprio lead, então não há como chegar a dados de outros clientes. Tentativas típicas são detectadas, marcadas na mensagem e etiquetadas no Langfuse (`suspeita_injecao`).
+- **Dados pessoais fora da observabilidade:** telefone, e-mail, CPF e CNPJ são mascarados antes de os traces irem para o Langfuse.
+- **Segredos só no `.env`** (fora do Git); o token do Telegram nunca aparece nos logs.
+
 ## 📁 Estrutura
 
 ```
@@ -163,7 +173,7 @@ cd ../web && npm install && npm run dev
 ### ✅ Testes
 
 ```bash
-cd api && uv run pytest     # requer o db rodando e o seed aplicado
+cd api && uv run pytest     # requer o db rodando; usa um banco próprio (sdr_test), criado e semeado sozinho
 RUN_LLM_TESTS=1 uv run pytest tests/test_agent_scenarios.py   # cenários do enunciado com o Claude (custa tokens)
 uv run ruff check .
 ```
@@ -175,8 +185,8 @@ uv run ruff check .
 - [x] **Dia 3** — Agente de agendamento, resumo para corretor, follow-up automático, observabilidade (Langfuse)
 - [x] **Dia 4** — Chat do lead (streaming + painel da IA em tempo real), dashboard do corretor e detalhe do lead
 - [x] **Diferenciais já entregues** — e-mail do resumo ao corretor com convite (.ics), widget para sites de imobiliárias, site fictício, bot do Telegram
-- [x] **Segurança (parte 1)** — senha de administrador nas configurações e liga/desliga das LLMs
-- [ ] **Próximos** — segurança (limite de mensagens, domínios do widget), deploy AWS, voz no chat
+- [x] **Segurança** — senha de administrador, liga/desliga das LLMs, limite de mensagens, domínios do widget, proteção contra prompt injection e dados pessoais mascarados no Langfuse
+- [ ] **Próximos** — deploy AWS, voz no chat
 - [ ] **Dia 6** — Documentação, demo e pitch
 
 ## 📄 Licença

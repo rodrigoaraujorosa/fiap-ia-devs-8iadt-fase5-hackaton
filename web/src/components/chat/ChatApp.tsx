@@ -335,8 +335,9 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
       }
       const context = embed ? { page_url: embed.source.page_url, property_id: embed.source.property_id } : undefined;
       await streamChat(id, content, handleEvent, context);
-    } catch {
-      setError("Não consegui falar com o servidor. Verifique se a API está no ar e tente de novo.");
+    } catch (err) {
+      const limited = err instanceof ApiError && (err.status === 429 || err.status === 403);
+      setError(limited ? err.message : "Não consegui falar com o servidor. Verifique se a API está no ar e tente de novo.");
       setMessages((list) => list.filter((m) => !(m.streaming && !m.content)));
     } finally {
       busyRef.current = false;
@@ -549,7 +550,9 @@ function ContactForm({ onSubmit }: { onSubmit: (name: string, phone: string) => 
       setError(
         err instanceof ApiError && err.status === 422
           ? "Confira o telefone: informe o DDD e o número."
-          : "Não consegui enviar agora. Tente de novo em instantes.",
+          : err instanceof ApiError && err.status === 429
+            ? err.message
+            : "Não consegui enviar agora. Tente de novo em instantes.",
       );
     } finally {
       setBusy(false);

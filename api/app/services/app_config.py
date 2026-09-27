@@ -5,10 +5,11 @@ Os jobs leem a configuração a cada ciclo, então a mudança vale na próxima r
 """
 
 import logging
+import re
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, EmailStr, Field, ValidationError
+from pydantic import BaseModel, EmailStr, Field, ValidationError, field_validator
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -47,6 +48,55 @@ class EmailConfig(BaseModel):
 
 class AIConfig(BaseModel):
     enabled: bool = Field(description="Liga/desliga o uso das LLMs (conversa, follow-up e resumos)")
+
+
+class RateLimitConfig(BaseModel):
+    enabled: bool = Field(description="Liga/desliga os limites de mensagens")
+    conversation_hour: int = Field(ge=5, le=500, description="Mensagens de uma conversa por hora")
+    ip_hour: int = Field(ge=5, le=2000, description="Mensagens de um mesmo IP por hora")
+    sessions_ip_hour: int = Field(ge=1, le=500, description="Conversas novas por IP por hora")
+    daily_total: int = Field(ge=10, le=100000, description="Mensagens por dia no total; acima disso, sem IA")
+
+
+DOMAIN = re.compile(r"^(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*(:\d{1,5})?$")
+
+
+def normalize_domain(raw: str) -> str:
+    """'https://www.site.com.br/imoveis' -> 'www.site.com.br' (mantém porta e curinga *.site.com.br)."""
+    value = raw.strip().lower()
+    value = re.sub(r"^[a-z]+://", "", value).split("/")[0].split("?")[0]
+    return value
+
+
+class WidgetConfig(BaseModel):
+    restrict: bool = Field(description="Só permite o widget nos domínios da lista")
+    allowed_domains: list[str] = Field(max_length=30, description="Domínios (com porta, se houver; *.dominio vale)")
+
+    @field_validator("allowed_domains")
+    @classmethod
+    def _domains(cls, value: list[str]) -> list[str]:
+        domains = []
+        for raw in value:
+            domain = normalize_domain(raw)
+            if not domain:
+                continue
+            if not DOMAIN.match(domain):
+                raise ValueError(f"domínio inválido: {raw}")
+            if domain not in domains:
+                domains.append(domain)
+        return domains
+
+    def allows(self, host: str | None) -> bool:
+        """host = 'site.com.br' ou 'localhost:5500' (do Origin ou da URL da página)."""
+        if not self.restrict:
+            return True
+        host = (host or "").lower()
+        for domain in self.allowed_domains:
+            if domain.startswith("*.") and (host.endswith(domain[1:]) or host == domain[2:]):
+                return True
+            if host == domain:
+                return True
+        return False
 
 
 class TelegramConfig(BaseModel):
@@ -104,6 +154,33 @@ def ai_enabled() -> bool:
 
 def save_ai_config(db: Session, config: AIConfig) -> AIConfig:
     return _save(db, "ai", config)
+
+
+def get_rate_limit_config(db: Session | None = None) -> RateLimitConfig:
+    s = get_settings()
+    defaults = RateLimitConfig(
+        enabled=s.rate_limit_enabled,
+        conversation_hour=s.rate_limit_conversation_hour,
+        ip_hour=s.rate_limit_ip_hour,
+        sessions_ip_hour=s.rate_limit_sessions_ip_hour,
+        daily_total=s.rate_limit_daily_total,
+    )
+    return _load(db, "rate_limit", defaults)
+
+
+def save_rate_limit_config(db: Session, config: RateLimitConfig) -> RateLimitConfig:
+    return _save(db, "rate_limit", config)
+
+
+def get_widget_config(db: Session | None = None) -> WidgetConfig:
+    s = get_settings()
+    return _load(
+        db, "widget", WidgetConfig(restrict=s.widget_restrict_domains, allowed_domains=s.widget_allowed_domains)
+    )
+
+
+def save_widget_config(db: Session, config: WidgetConfig) -> WidgetConfig:
+    return _save(db, "widget", config)
 
 
 def get_telegram_config(db: Session | None = None) -> TelegramConfig:

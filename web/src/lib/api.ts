@@ -173,6 +173,14 @@ export type Metrics = {
 };
 
 export type AIConfig = { enabled: boolean };
+export type RateLimitConfig = {
+  enabled: boolean;
+  conversation_hour: number;
+  ip_hour: number;
+  sessions_ip_hour: number;
+  daily_total: number;
+};
+export type WidgetConfig = { restrict: boolean; allowed_domains: string[] };
 export type AuthStatus = { required: boolean; authenticated: boolean };
 
 export type FollowupConfig = {
@@ -236,8 +244,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const res = await fetch(`${API_URL}${path}`, { cache: "no-store", ...init, headers });
-  if (!res.ok) throw new ApiError(`${init?.method ?? "GET"} ${path} falhou: ${res.status}`, res.status);
+  if (!res.ok) throw await apiError(res, `${init?.method ?? "GET"} ${path} falhou: ${res.status}`);
   return res.json() as Promise<T>;
+}
+
+/** Erro com o texto do campo "detail" da API (ex.: aviso de limite de mensagens), quando houver. */
+async function apiError(res: Response, fallback: string): Promise<ApiError> {
+  try {
+    const body = (await res.json()) as { detail?: unknown };
+    if (typeof body.detail === "string") return new ApiError(body.detail, res.status);
+  } catch {}
+  return new ApiError(fallback, res.status);
 }
 
 export const apiGet = <T,>(path: string) => request<T>(path);
@@ -298,7 +315,7 @@ export async function streamChat(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content, context }),
   });
-  if (!res.ok || !res.body) throw new Error(`Falha ao enviar mensagem: ${res.status}`);
+  if (!res.ok || !res.body) throw await apiError(res, `Falha ao enviar mensagem: ${res.status}`);
 
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = "";

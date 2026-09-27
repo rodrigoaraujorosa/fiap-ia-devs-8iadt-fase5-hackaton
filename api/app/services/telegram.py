@@ -30,6 +30,7 @@ from app.models.enums import Channel, MessageRole
 from app.schemas.property import PropertyOut
 from app.services.app_config import get_telegram_config
 from app.services.chat import PHONE_REQUEST, _lead_locks, run_turn
+from app.services.rate_limit import check_message
 from app.services.scheduling import format_slot
 from app.services.telegram_format import md_to_html, property_block, split_message, strip_markdown
 
@@ -352,6 +353,10 @@ def _on_message(msg: dict) -> None:
                 lead.name = proper_name(contact_name)
             db.commit()
         lead_id = lead.id
+        blocked = check_message(db, lead_id)  # limite por conversa (no Telegram não há IP)
+    if blocked:
+        send(chat_id, blocked)
+        return
     _run(chat_id, lead_id, text)
 
 

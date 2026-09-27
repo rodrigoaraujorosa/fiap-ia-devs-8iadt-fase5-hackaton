@@ -10,6 +10,7 @@ from functools import lru_cache
 from typing import Any
 
 from app.core.config import get_settings
+from app.core.pii import mask_pii
 
 log = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ def _client():
         secret_key=s.langfuse_secret_key,
         base_url=s.langfuse_base_url,
         environment=s.environment,
+        mask=mask_pii,  # telefone, e-mail, CPF e CNPJ não saem da aplicação
     )
 
 

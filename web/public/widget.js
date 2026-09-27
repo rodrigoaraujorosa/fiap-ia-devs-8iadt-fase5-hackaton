@@ -208,8 +208,30 @@
     document.body.appendChild(host);
     if (cfg.teaserDelay > 0) setTimeout(showTeaser, cfg.teaserDelay * 1000);
   }
-  if (document.body) mount();
-  else document.addEventListener("DOMContentLoaded", mount);
+  function start() {
+    if (document.body) mount();
+    else document.addEventListener("DOMContentLoaded", mount);
+  }
 
-  window.ImobiQ = { __loaded: true, open: open, close: close, toggle: toggle };
+  // o app diz se este site está na lista de domínios autorizados (tela de configurações)
+  var allowed = true;
+  fetch(APP + "/widget-policy?origin=" + encodeURIComponent(location.origin))
+    .then(function (r) {
+      return r.ok ? r.json() : { allowed: true };
+    })
+    .catch(function () {
+      return { allowed: true }; // sem resposta: o navegador ainda barra o chat pelo frame-ancestors
+    })
+    .then(function (policy) {
+      allowed = policy.allowed !== false;
+      if (allowed) start();
+      else console.warn("[ImobiQ] widget não autorizado neste site (" + location.host + ")");
+    });
+
+  function guard(fn) {
+    return function (options) {
+      if (allowed) fn(options);
+    };
+  }
+  window.ImobiQ = { __loaded: true, open: guard(open), close: close, toggle: guard(toggle) };
 })();

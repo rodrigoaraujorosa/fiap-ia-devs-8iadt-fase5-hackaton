@@ -10,6 +10,7 @@ from collections import defaultdict
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
+from app.agents.guardrails import suspicious
 from app.agents.qualification import normalize_phone, proper_name
 from app.agents.runtime import get_graph
 from app.core import observability
@@ -17,7 +18,8 @@ from app.db.session import SessionLocal
 from app.models import Lead, Message, Property
 from app.models.enums import MessageRole
 from app.schemas.lead import LeadOut, PageContext
-from app.services.app_config import ai_enabled, get_followup_config
+from app.services.app_config import get_followup_config
+from app.services.rate_limit import ai_available
 
 log = logging.getLogger(__name__)
 _lead_locks: defaultdict[uuid.UUID, threading.Lock] = defaultdict(threading.Lock)
@@ -54,20 +56,25 @@ def run_turn(lead_id: uuid.UUID, text: str, context: PageContext | None = None) 
         lead = db.get(Lead, lead_id)
         if context and context.property_id and db.get(Property, context.property_id):
             lead.extra = {**(lead.extra or {}), "viewing": context.property_id}
-        db.add(Message(lead_id=lead_id, role=MessageRole.USER, content=text))
+        flagged = suspicious(text)
+        if flagged:
+            log.warning("Possível prompt injection no lead %s", lead_id)
+        db.add(Message(lead_id=lead_id, role=MessageRole.USER, content=text,
+                       meta={"injection_suspect": True} if flagged else {}))  # fmt: skip
         lead.last_message_at = lead.last_lead_message_at = now
         lead.followup_count = 0
         lead.next_followup_at = None
         db.commit()
 
-    if not ai_enabled():
+    if not ai_available():  # IA desligada nas configurações ou teto diário de mensagens atingido
         yield _paused_turn(lead_id, text)
         return
 
     reply, bubbles, agent, property_ids, notices = "", [], None, [], {}
     graph_input = {"lead_id": str(lead_id), "messages": [{"role": "user", "content": text}]}
     config = {"configurable": {"thread_id": str(lead_id)}}
-    with observability.trace("turno", session_id=str(lead_id), input=text) as root:
+    tags = ["suspeita_injecao"] if flagged else None
+    with observability.trace("turno", session_id=str(lead_id), input=text, tags=tags) as root:
         try:
             for event in get_graph().stream(graph_input, config, stream_mode="custom"):
                 if event["type"] == "reply":

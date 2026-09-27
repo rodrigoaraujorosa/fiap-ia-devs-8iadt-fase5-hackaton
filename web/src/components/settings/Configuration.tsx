@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AlertTriangle,
   Bot,
   Check,
   DatabaseZap,
@@ -16,9 +15,11 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { CHAT_STORAGE_KEY } from "@/components/chat/ChatApp";
+import { SecuritySettings } from "@/components/settings/SecuritySettings";
+import { FeedbackLine, Field, Switch, buttonClass, inputClass, type Feedback } from "@/components/settings/controls";
 import { Card } from "@/components/ui";
 import {
   ApiError,
@@ -36,61 +37,6 @@ import {
   type TelegramConfig,
   type TelegramConfigOut,
 } from "@/lib/api";
-
-type Feedback = { tone: "ok" | "error"; text: string } | null;
-
-function Switch({ checked, onChange, label, disabled }: {
-  checked: boolean;
-  onChange: (value: boolean) => void;
-  label: string;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-50 ${
-        checked ? "bg-brand" : "bg-line"
-      }`}
-    >
-      <span
-        className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5.5" : "translate-x-0.5"}`}
-      />
-    </button>
-  );
-}
-
-function Field({ label, hint, htmlFor, children }: { label: string; hint?: ReactNode; htmlFor: string; children: ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-ink">
-        {label}
-      </label>
-      {children}
-      {hint && <p className="text-xs text-muted">{hint}</p>}
-    </div>
-  );
-}
-
-function FeedbackLine({ feedback }: { feedback: Feedback }) {
-  if (!feedback) return null;
-  const Icon = feedback.tone === "ok" ? Check : AlertTriangle;
-  return (
-    <p role="status" className={`flex items-center gap-1.5 text-sm ${feedback.tone === "ok" ? "text-good" : "text-danger"}`}>
-      <Icon className="size-4" aria-hidden />
-      {feedback.text}
-    </p>
-  );
-}
-
-const inputClass =
-  "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50";
-const buttonClass =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 function cadence(config: FollowupConfig): string {
   return Array.from({ length: config.max_attempts }, (_, i) => `${config.minutes * 2 ** i} min`).join(" → ");
@@ -890,6 +836,7 @@ export function Configuration() {
       {open && (
         <>
           <AISettings />
+          <SecuritySettings />
           <FollowupSettings />
           <EmailSettings />
           <TelegramSettings />
