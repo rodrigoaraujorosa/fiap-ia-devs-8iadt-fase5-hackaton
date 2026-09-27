@@ -10,6 +10,8 @@ from collections import defaultdict
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import select
+
 from app.agents.guardrails import suspicious
 from app.agents.qualification import normalize_phone, proper_name
 from app.agents.runtime import get_graph
@@ -56,9 +58,9 @@ def run_turn(lead_id: uuid.UUID, text: str, context: PageContext | None = None) 
         lead = db.get(Lead, lead_id)
         if context and context.property_id and db.get(Property, context.property_id):
             lead.extra = {**(lead.extra or {}), "viewing": context.property_id}
-        flagged = suspicious(text)
+        flagged = suspicious(text)  # regex: instantânea, português e inglês; o supervisor cobre qualquer idioma
         if flagged:
-            log.warning("Possível prompt injection no lead %s", lead_id)
+            log.warning("Possível prompt injection no lead %s (regex)", lead_id)
         db.add(Message(lead_id=lead_id, role=MessageRole.USER, content=text,
                        meta={"injection_suspect": True} if flagged else {}))  # fmt: skip
         lead.last_message_at = lead.last_lead_message_at = now
@@ -73,13 +75,17 @@ def run_turn(lead_id: uuid.UUID, text: str, context: PageContext | None = None) 
     reply, bubbles, agent, property_ids, notices = "", [], None, [], {}
     graph_input = {"lead_id": str(lead_id), "messages": [{"role": "user", "content": text}]}
     config = {"configurable": {"thread_id": str(lead_id)}}
-    tags = ["suspeita_injecao"] if flagged else None
-    with observability.trace("turno", session_id=str(lead_id), input=text, tags=tags) as root:
+    with observability.trace("turno", session_id=str(lead_id), input=text) as root:
         try:
             for event in get_graph().stream(graph_input, config, stream_mode="custom"):
                 if event["type"] == "reply":
                     reply, bubbles, property_ids = event["text"], event["bubbles"], event["property_ids"]
                     continue
+                if event["type"] == "analysis":
+                    detected_by = [d for d, hit in (("regex", flagged), ("supervisor", event["manipulation"])) if hit]
+                    if detected_by:
+                        _flag_injection(lead_id, detected_by)
+                        observability.flag_trace("suspeita_injecao", comment=" + ".join(detected_by))
                 if event["type"] == "agent":
                     agent = event["agent"]
                 elif event["type"] in ("appointment", "handoff"):
@@ -137,6 +143,17 @@ def guess_name(text: str) -> str | None:
     else:
         return None
     return proper_name(" ".join(words[:3])) if words else None
+
+
+def _flag_injection(lead_id: uuid.UUID, detected_by: list[str]) -> None:
+    """Marca a última mensagem do cliente como suspeita e registra quem detectou (regex e/ou supervisor)."""
+    log.warning("Possível prompt injection no lead %s (%s)", lead_id, ", ".join(detected_by))
+    with SessionLocal() as db:
+        stmt = select(Message).where(Message.lead_id == lead_id, Message.role == MessageRole.USER)
+        msg = db.scalars(stmt.order_by(Message.id.desc())).first()
+        if msg is not None:
+            msg.meta = {**(msg.meta or {}), "injection_suspect": True, "detected_by": detected_by}
+            db.commit()
 
 
 def _paused_turn(lead_id: uuid.UUID, text: str) -> dict:

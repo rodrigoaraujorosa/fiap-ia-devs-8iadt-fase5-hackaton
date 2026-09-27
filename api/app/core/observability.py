@@ -69,6 +69,23 @@ def observation(name: str, as_type: str = "span", **kwargs: Any) -> Iterator[Any
         yield obs
 
 
+def flag_trace(name: str, comment: str) -> None:
+    """Marca o trace atual (ex.: suspeita de prompt injection) com tag, observação do tipo guardrail e score.
+
+    A tag é aplicada no meio do turno: propagate_attributes grava no span raiz, que ainda está aberto.
+    """
+    client = _client()
+    if client is None:
+        return
+    from langfuse import propagate_attributes
+
+    with propagate_attributes(tags=[name]):
+        with client.start_as_current_observation(name=name, as_type="guardrail", level="WARNING",
+                                                 output={"detectado_por": comment}):  # fmt: skip
+            pass
+    client.score_current_trace(name=name, value=1, data_type="BOOLEAN", comment=comment)
+
+
 def flush() -> None:
     client = _client()
     if client is not None:

@@ -19,7 +19,7 @@ def _analysis(**overrides) -> LeadAnalysis:
         headcount=0, requirements=[], property_type="",
         budget_min=0, budget_max=0, bedrooms=0, regions=[],
         urgency="desconhecida", timeline="", financing="", investor_profile="", ticket=0, expected_return="",
-        wants_meeting="nao_informado", notes="", route="compra_aluguel",
+        wants_meeting="nao_informado", notes="", route="compra_aluguel", manipulation_attempt="nao",
     )  # fmt: skip
     return LeadAnalysis(**{**base, **overrides})
 
@@ -174,3 +174,15 @@ def test_apply_analysis_capitalizes_name_and_company():
     lead = _lead()
     apply_analysis(lead, _analysis(name="alfredo", company="grão fino café"))
     assert lead.name == "Alfredo" and lead.company == "Grão Fino Café"
+
+
+def test_intent_evidence_in_spanish_and_english():
+    for intent, text in (
+        ("aluguel", "busco una oficina para alquilar"),
+        ("aluguel", "we want to rent an office"),
+        ("compra", "queremos comprar la sede"),
+        ("investimento", "looking to invest for income"),
+    ):
+        lead = _lead()
+        apply_analysis(lead, _analysis(intent=intent, intent_evidence=text), text)
+        assert lead.intent == intent, text
