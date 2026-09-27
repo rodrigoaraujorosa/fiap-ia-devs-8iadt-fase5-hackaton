@@ -1,11 +1,13 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.agents import runtime
-from app.api.routes import admin, chat, health, leads, properties, telegram
+from app.agents.llm import AIPausedError
+from app.api.routes import admin, auth, chat, health, leads, properties, telegram
 from app.core import observability
 from app.core.config import get_settings
 from app.jobs import scheduler
@@ -37,7 +39,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(AIPausedError)
+async def ai_paused(_: Request, exc: AIPausedError):
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(properties.router)
 app.include_router(chat.router)
 app.include_router(leads.router)

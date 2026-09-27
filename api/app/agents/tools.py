@@ -191,10 +191,21 @@ def _listar_horarios(ctx: ToolContext, raw: Any) -> ToolOutcome:
     return ToolOutcome(json.dumps(payload, ensure_ascii=False), event={"type": "slots", "items": payload["horarios"]})
 
 
+NEED_PHONE = (
+    "Visita ainda NÃO agendada: falta o telefone/WhatsApp do cliente, necessário para o corretor confirmar a "
+    'visita. Peça agora, de forma leve, citando o horário que ele escolheu (ex.: "Perfeito! Pra eu confirmar '
+    'esse horário, me passa seu WhatsApp? O corretor usa só pra confirmar a visita com você."). Não diga que '
+    "está agendado. Quando ele responder, chame agendar de novo com o mesmo horário; se ele preferir não "
+    "informar, respeite sem insistir e agende assim mesmo."
+)
+
+
 def _agendar(ctx: ToolContext, raw: Any) -> ToolOutcome:
     params = BookParams.model_validate(raw)
     lead = ctx.db.get(Lead, ctx.lead_id)
     property_id = params.property_id.strip().upper() if params.property_id else None
+    if not lead.phone and not (lead.extra or {}).get("phone_declined"):
+        return ToolOutcome(NEED_PHONE, is_error=True)
     try:
         appt = scheduling.book(ctx.db, lead, params.slot_id, params.tipo, property_id, params.observacoes)
     except scheduling.SchedulingError as exc:

@@ -21,6 +21,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 from sqlalchemy import select
 
+from app.agents.qualification import normalize_phone, proper_name
 from app.agents.runtime import get_graph
 from app.core.config import get_settings
 from app.db.session import SessionLocal
@@ -28,7 +29,7 @@ from app.models import Broker, Lead, Message, Property, Slot
 from app.models.enums import Channel, MessageRole
 from app.schemas.property import PropertyOut
 from app.services.app_config import get_telegram_config
-from app.services.chat import _lead_locks, run_turn
+from app.services.chat import PHONE_REQUEST, _lead_locks, run_turn
 from app.services.scheduling import format_slot
 from app.services.telegram_format import md_to_html, property_block, split_message, strip_markdown
 
@@ -52,6 +53,14 @@ WELCOME = (
     "ou um imóvel para investir. Me conta o que você procura?"
 )
 ONLY_TEXT = "Por enquanto eu entendo só mensagens de texto 😊 Me conta por escrito o que você procura?"
+CONTACT_HINT = "Se preferir, é só tocar no botão abaixo para enviar seu telefone 👇"
+CONTACT_KEYBOARD = {
+    "keyboard": [[{"text": "📱 Enviar meu telefone", "request_contact": True}]],
+    "one_time_keyboard": True,
+    "resize_keyboard": True,
+    "input_field_placeholder": "Ou digite seu WhatsApp com DDD",
+}
+_contact_asked: set[int] = set()  # chats com o botão de telefone aberto (some quando o telefone chega)
 
 
 class TelegramError(Exception):
@@ -269,10 +278,19 @@ def _run(chat_id: int, lead_id: uuid.UUID, text: str) -> None:
         return
     bubbles = done["bubbles"] or [done["reply"]]
     keyboard = _slot_keyboard(slots) if slots and not booked else None
+    lead = done["lead"]
+    has_phone = bool(lead.get("phone")) or bool((lead.get("extra") or {}).get("phone_declined"))
     for i, bubble in enumerate(bubbles):
-        send(chat_id, bubble, markdown=True, reply_markup=keyboard if i == len(bubbles) - 1 else None)
+        markup = keyboard if i == len(bubbles) - 1 else None
+        if markup is None and has_phone and chat_id in _contact_asked:
+            markup = {"remove_keyboard": True}  # o telefone chegou (digitado ou pelo botão): recolhe o botão
+            _contact_asked.discard(chat_id)
+        send(chat_id, bubble, markdown=True, reply_markup=markup)
     if done["property_ids"] and (cards := _property_cards(done["property_ids"])):
         send(chat_id, cards)
+    if not has_phone and PHONE_REQUEST.search(done["reply"]):  # a Laris pediu o telefone: botão de um toque
+        send(chat_id, CONTACT_HINT, reply_markup=CONTACT_KEYBOARD)
+        _contact_asked.add(chat_id)
 
 
 def _on_start(chat_id: int, user: dict, payload: str) -> None:
@@ -318,11 +336,21 @@ def _on_message(msg: dict) -> None:
     if command:
         send(chat_id, HELP.format(brand=html.escape(get_settings().telegram_brand)))
         return
+    contact = msg.get("contact") or {}
+    if contact.get("phone_number") and contact.get("user_id") == user.get("id"):  # o próprio número, pelo botão
+        text = f"Meu telefone é {contact['phone_number']}"
     if not text:
         send(chat_id, ONLY_TEXT)
         return
     with SessionLocal() as db:
-        lead_id = (_chat_lead(db, chat_id) or _create_lead(db, chat_id, user)).id
+        lead = _chat_lead(db, chat_id) or _create_lead(db, chat_id, user)
+        if contact.get("phone_number") and (phone := normalize_phone(contact["phone_number"])):
+            lead.phone = phone  # veio do botão: já grava, sem depender da leitura da IA
+            contact_name = " ".join(filter(None, (contact.get("first_name"), contact.get("last_name"))))
+            if not lead.name and contact_name:
+                lead.name = proper_name(contact_name)
+            db.commit()
+        lead_id = lead.id
     _run(chat_id, lead_id, text)
 
 

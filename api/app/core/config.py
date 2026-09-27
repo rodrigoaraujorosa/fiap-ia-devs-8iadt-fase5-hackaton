@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     telegram_brand: str = "Imobiliária Exemplo"  # em nome de quem a Laris atende no Telegram
     public_site_url: str = "http://localhost:5500"  # site da imobiliária: links "ver no site" dos imóveis
 
+    # Senha da área de administração (configurações, reset da demo). Vazia = sem senha (uso local).
+    admin_password: str | None = None
+
     # Agenda
     timezone: str = "America/Sao_Paulo"
     slot_days_ahead: int = 10

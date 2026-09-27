@@ -5,11 +5,13 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.agents.qualification import normalize_phone
 from app.db.session import get_db
 from app.models import Lead, Message
 from app.models.enums import Channel
-from app.schemas.lead import LeadCreate, LeadOut, MessageIn, MessageOut
-from app.services.chat import stream_turn_sse
+from app.schemas.lead import ContactIn, LeadCreate, LeadOut, MessageIn, MessageOut
+from app.services.app_config import ai_enabled
+from app.services.chat import save_contact, stream_turn_sse
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -19,6 +21,12 @@ def _get_lead(db: Session, lead_id: uuid.UUID) -> Lead:
     if not lead:
         raise HTTPException(404, "Conversa não encontrada")
     return lead
+
+
+@router.get("/status")
+def chat_status():
+    """Se a Laris está atendendo com IA; pausada, o chat mostra o formulário de contato (nome e telefone)."""
+    return {"ai_enabled": ai_enabled()}
 
 
 @router.post("/sessions", response_model=LeadOut, status_code=201)
@@ -40,6 +48,16 @@ def create_session(payload: LeadCreate | None = None, db: Session = Depends(get_
 def list_messages(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     _get_lead(db, lead_id)
     return db.scalars(select(Message).where(Message.lead_id == lead_id).order_by(Message.id)).all()
+
+
+@router.post("/{lead_id}/contact", response_model=LeadOut)
+def send_contact(lead_id: uuid.UUID, payload: ContactIn, db: Session = Depends(get_db)):
+    """Recebe o formulário de contato do chat (nome + telefone) e responde com o recado de agradecimento."""
+    _get_lead(db, lead_id)
+    phone = normalize_phone(payload.phone)
+    if phone is None:
+        raise HTTPException(422, "Telefone inválido: informe o DDD e o número")
+    return save_contact(lead_id, payload.name.strip(), phone)
 
 
 @router.post("/{lead_id}/messages")

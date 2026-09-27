@@ -45,6 +45,10 @@ class EmailConfig(BaseModel):
     demo_recipient: EmailStr = Field(description="Caixa que recebe os e-mails no modo demonstração")
 
 
+class AIConfig(BaseModel):
+    enabled: bool = Field(description="Liga/desliga o uso das LLMs (conversa, follow-up e resumos)")
+
+
 class TelegramConfig(BaseModel):
     enabled: bool = Field(description="Liga/desliga o atendimento da Laris pelo bot do Telegram")
 
@@ -88,6 +92,18 @@ def get_followup_config(db: Session | None = None) -> FollowupConfig:
 
 def save_followup_config(db: Session, config: FollowupConfig) -> FollowupConfig:
     return _save(db, "followup", config)
+
+
+def get_ai_config(db: Session | None = None) -> AIConfig:
+    return _load(db, "ai", AIConfig(enabled=True))
+
+
+def ai_enabled() -> bool:
+    return get_ai_config().enabled
+
+
+def save_ai_config(db: Session, config: AIConfig) -> AIConfig:
+    return _save(db, "ai", config)
 
 
 def get_telegram_config(db: Session | None = None) -> TelegramConfig:

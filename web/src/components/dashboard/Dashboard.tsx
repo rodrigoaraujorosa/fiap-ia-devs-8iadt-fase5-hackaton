@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, CalendarDays, RefreshCw } from "lucide-react";
+import { BellRing, CalendarDays, PauseCircle, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -89,6 +89,17 @@ export function Dashboard() {
           {updatedAt ? `Atualizado ${updatedAt.toLocaleTimeString("pt-BR")}` : "Carregando"}
         </button>
       </div>
+
+      {metrics && !metrics.ai_enabled && (
+        <p role="status" className="flex flex-wrap items-center gap-1.5 rounded-lg border border-warm/40 bg-warm/10 px-3 py-2 text-sm text-ink">
+          <PauseCircle aria-hidden size={16} className="shrink-0 text-warm" />
+          <strong className="font-medium">Atendimento com IA pausado.</strong>
+          O chat e o Telegram respondem um recado fixo e guardam a mensagem; follow-ups e resumos estão parados.
+          <Link href="/configuration" className="font-medium text-brand underline-offset-2 hover:underline">
+            Religar
+          </Link>
+        </p>
+      )}
 
       {failed && (
         <p className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-danger">

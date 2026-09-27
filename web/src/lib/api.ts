@@ -163,7 +163,11 @@ export type Metrics = {
   upcoming_appointments: number;
   followups_sent: number;
   awaiting_followup: number;
+  ai_enabled: boolean;
 };
+
+export type AIConfig = { enabled: boolean };
+export type AuthStatus = { required: boolean; authenticated: boolean };
 
 export type FollowupConfig = {
   enabled: boolean;
@@ -192,9 +196,41 @@ export type TelegramAvailability = { available: boolean; username: string | null
 
 export type DemoResetResult = { leads: number; appointments: number; slots: number };
 
+// ---------------------------------------------------------------- acesso de administrador
+
+const ADMIN_TOKEN_KEY = "imobiq:admin-token";
+
+export function getAdminToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(ADMIN_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAdminToken(token: string | null) {
+  try {
+    if (token) window.localStorage.setItem(ADMIN_TOKEN_KEY, token);
+    else window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+  } catch {}
+}
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, { cache: "no-store", ...init });
-  if (!res.ok) throw new Error(`${init?.method ?? "GET"} ${path} falhou: ${res.status}`);
+  const token = getAdminToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const res = await fetch(`${API_URL}${path}`, { cache: "no-store", ...init, headers });
+  if (!res.ok) throw new ApiError(`${init?.method ?? "GET"} ${path} falhou: ${res.status}`, res.status);
   return res.json() as Promise<T>;
 }
 
@@ -221,7 +257,15 @@ export type ChatEvent =
   | { type: "handoff"; corretor: string; prazo_retorno: string }
   | { type: "slots"; items: { slot_id: number; quando: string; com: string }[] }
   | { type: "error"; message: string }
-  | { type: "done"; reply: string; bubbles: string[]; property_ids: string[]; agent: string | null; lead: Lead };
+  | {
+      type: "done";
+      reply: string;
+      bubbles: string[];
+      property_ids: string[];
+      agent: string | null;
+      lead: Lead;
+      contact_form?: boolean; // IA pausada: mostrar o formulário de nome e telefone
+    };
 
 /** Envia a mensagem e entrega cada evento SSE da resposta (fetch + ReadableStream, pois é POST). */
 /** Origem do lead quando ele chega pelo widget no site de uma imobiliária. */

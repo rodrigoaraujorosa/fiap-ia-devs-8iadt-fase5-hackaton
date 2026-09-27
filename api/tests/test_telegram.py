@@ -203,3 +203,28 @@ def test_webhook_requires_secret(client, monkeypatch):
     headers = {"X-Telegram-Bot-Api-Secret-Token": "segredo"}
     ok = client.post("/webhooks/telegram", json={"update_id": 1}, headers=headers)
     assert ok.status_code == 200 and received == [{"update_id": 1}]
+
+
+def test_contact_button_saves_the_phone(db, bot, chat_id, monkeypatch):
+    turns = []
+    monkeypatch.setattr(telegram, "_run", lambda cid, lead_id, text: turns.append(text))
+    telegram.handle_update(_message(chat_id, "/start"))
+    telegram.handle_update({"update_id": random.randint(1, 10**9), "message": {
+        "chat": {"id": chat_id, "type": "private"}, "from": {"id": chat_id, "first_name": "rodrigo"},
+        "contact": {"phone_number": "5511977776666", "user_id": chat_id, "first_name": "rodrigo",
+                    "last_name": "rosa"}}})  # fmt: skip
+    lead = telegram._chat_lead(db, chat_id)
+    assert lead.phone == "+55 11 97777-6666" and lead.name == "Rodrigo Rosa"
+    assert turns == ["Meu telefone é 5511977776666"]
+
+
+def test_phone_request_shows_contact_button(db, bot, chat_id, monkeypatch):
+    telegram.handle_update(_message(chat_id, "/start"))
+    lead_id = telegram._chat_lead(db, chat_id).id
+    done = {"type": "done", "reply": "Me passa seu WhatsApp pra confirmar?", "bubbles": [], "property_ids": [],
+            "agent": "agendamento", "lead": {"phone": None, "extra": {}}}  # fmt: skip
+    monkeypatch.setattr(telegram, "run_turn", lambda lead_id, text: iter([done]))
+    telegram._run(chat_id, lead_id, "pode ser o primeiro")
+    last = [p for m, p in bot.calls if m == "sendMessage"][-1]
+    assert last["reply_markup"]["keyboard"][0][0]["request_contact"] is True
+    telegram._contact_asked.discard(chat_id)

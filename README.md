@@ -47,7 +47,7 @@ flowchart LR
     J[[Job de follow-up<br/>APScheduler]] -->|lead sem resposta| F[Mensagem contextual<br/>cadência 2N, 4N...]
 ```
 
-- **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada: segmento, empresa, cargo, se é o decisor, atividade, área ou nº de pessoas, requisitos, orçamento, região, urgência e perfil de investidor (no residencial, quartos). Regras determinísticas calculam campos faltantes (no comercial, seguindo o BANT: necessidade, orçamento, autoridade e prazo), score (0-100), temperatura e etapa do funil, e escolhem o agente que responde. O perfil registra só o que o cliente disse: a finalidade (compra, aluguel ou investimento) exige um trecho citado literalmente da mensagem do cliente, conferido pelo código, e a busca de imóveis fica travada até ela ser declarada. O telefone é pedido ao agendar ou encaminhar, uma única vez.
+- **Supervisor (Haiku):** a cada mensagem, lê a conversa e devolve o perfil do lead em saída estruturada: segmento, empresa, cargo, se é o decisor, atividade, área ou nº de pessoas, requisitos, orçamento, região, urgência e perfil de investidor (no residencial, quartos). Regras determinísticas calculam campos faltantes (no comercial, seguindo o BANT: necessidade, orçamento, autoridade e prazo), score (0-100), temperatura e etapa do funil, e escolhem o agente que responde. O perfil registra só o que o cliente disse: a finalidade (compra, aluguel ou investimento) exige um trecho citado literalmente da mensagem do cliente, conferido pelo código, e a busca de imóveis fica travada até ela ser declarada. O telefone é obrigatório para confirmar uma visita: a ferramenta `agendar` recusa o horário enquanto ele não foi informado, e a Laris pede de novo. A visita só é agendada sem telefone se o cliente se recusar a informar (no Telegram, um botão envia o número com um toque).
 - **Agentes (Sonnet):** persona humanizada ("Laris"), uma pergunta por vez, guiada pela lista de campos faltantes. *Locação e Compra* e *Investimentos* (imóveis locados, cap rate) qualificam e sugerem imóveis; *Agendamento* consulta a agenda do corretor especialista no tipo de imóvel (sedes corporativas, conjuntos, galpões, residenciais de alto padrão, ou o especialista em investimentos) e confirma visitas e reuniões. A busca entende a linguagem do cliente ("escritório", "sede", "andar", "CD", "Faria Lima", "JK", "Berrini", "Via Dutra") e filtra por atividade permitida, área, vagas, docas e pé-direito. Nos aluguéis, a Laris informa o custo mensal total (aluguel + condomínio + IPTU).
 - **Resumo inteligente:** ao agendar ou encaminhar, o corretor recebe um briefing estruturado (perfil, necessidades, imóveis de interesse, objeções, próximos passos, abordagem sugerida) **por e-mail**, com o convite de calendário (.ics) da visita anexado. No modo demonstração, todos os e-mails vão para uma única caixa, com o corretor de destino no assunto.
 - **Follow-up automático:** um job reserva leads sem resposta (`FOR UPDATE SKIP LOCKED`, seguro com várias instâncias) e envia mensagens com o contexto da conversa. Cada tentativa usa uma estratégia (retomar, agregar valor, encerrar), com cadência crescente; depois da última, o lead vai para *perdido*. Se ele voltar, a conversa continua de onde parou. O envio pode ser pausado, ter a cadência ajustada ou um horário de silêncio definido em tempo real na tela de configurações.
@@ -67,6 +67,8 @@ flowchart LR
 | `POST` | `/leads/{lead_id}/summary/email` | Envia o resumo ao corretor por e-mail agora |
 | `GET` | `/appointments` | Próximos agendamentos |
 | `GET` | `/dashboard/metrics` | KPIs: funil, temperatura, intenção, agendamentos e follow-ups |
+| `POST` | `/auth/login` | Troca a senha de administrador por um token de 12 horas (rotas `/config/*`, `/followups/run` e `/admin/*` exigem esse token quando há `ADMIN_PASSWORD`) |
+| `GET` / `PUT` | `/config/ai` | Liga/desliga o uso das LLMs |
 | `GET` / `PUT` | `/config/followup` | Lê/altera o follow-up em tempo real (liga/desliga, minutos, tentativas, horário de silêncio) |
 | `GET` / `PUT` | `/config/email` | Lê/altera o envio de e-mails (liga/desliga, modo demonstração, caixa de demonstração) |
 | `POST` | `/config/email/test` | Envia um e-mail de teste para validar o SMTP |
@@ -81,7 +83,7 @@ flowchart LR
 | 📊 **Dashboard do corretor** (`/dashboard`) | Indicadores (leads, taxa de qualificação, quentes, agendamentos, follow-ups), funil por etapa, intenção dos leads, próximos agendamentos e tabela de leads com filtros. Atualiza sozinho a cada 10s. |
 | 🗂️ **Detalhe do lead** (`/dashboard/leads/{id}`) | Resumo inteligente para o corretor (gerar/atualizar), status e histórico do e-mail ao corretor (com reenvio), perfil, agendamentos e a conversa completa, com o agente que respondeu cada mensagem e os follow-ups marcados. |
 | 🧩 **Chat no widget** (`/embed`) | Versão enxuta do chat usada dentro do iframe do widget, com a marca da imobiliária, saudação sobre o imóvel da página e botão de fechar. |
-| ⚙️ **Configurações** (`/configuration`) | Liga/desliga do follow-up com efeito imediato, minutos até a 1ª tentativa, máximo de tentativas, horário de silêncio e botão "rodar agora". Controla o e-mail aos corretores (liga/desliga, modo demonstração, e-mail de teste). Também reseta os dados de demonstração (8 leads em todas as etapas do funil, com conversas, resumos e agendamentos). |
+| ⚙️ **Configurações** (`/configuration`) | Protegida pela senha de administrador (`ADMIN_PASSWORD`). **Liga/desliga do atendimento com IA**: pausado, nada chama o Claude (o chat, o widget e o Telegram respondem um recado fixo pedindo nome e telefone e guardam a mensagem; follow-ups e resumos param), para o site público não gastar tokens fora das demonstrações. Liga/desliga do follow-up com efeito imediato, minutos até a 1ª tentativa, máximo de tentativas, horário de silêncio e botão "rodar agora". Controla o e-mail aos corretores (liga/desliga, modo demonstração, e-mail de teste). Também reseta os dados de demonstração (8 leads em todas as etapas do funil, com conversas, resumos e agendamentos). |
 
 A conversa fica salva no navegador (o lead é retomado ao recarregar); use **Nova conversa** para simular outro lead. Os atalhos iniciais do chat reproduzem os três cenários do enunciado.
 
@@ -173,7 +175,8 @@ uv run ruff check .
 - [x] **Dia 3** — Agente de agendamento, resumo para corretor, follow-up automático, observabilidade (Langfuse)
 - [x] **Dia 4** — Chat do lead (streaming + painel da IA em tempo real), dashboard do corretor e detalhe do lead
 - [x] **Diferenciais já entregues** — e-mail do resumo ao corretor com convite (.ics), widget para sites de imobiliárias, site fictício, bot do Telegram
-- [ ] **Próximos** — segurança (acesso ao dashboard, limite de mensagens, domínios do widget), deploy AWS, voz no chat
+- [x] **Segurança (parte 1)** — senha de administrador nas configurações e liga/desliga das LLMs
+- [ ] **Próximos** — segurança (limite de mensagens, domínios do widget), deploy AWS, voz no chat
 - [ ] **Dia 6** — Documentação, demo e pitch
 
 ## 📄 Licença

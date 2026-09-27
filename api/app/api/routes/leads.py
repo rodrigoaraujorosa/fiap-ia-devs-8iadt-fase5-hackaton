@@ -11,6 +11,7 @@ from app.db.session import get_db
 from app.models import Appointment, EmailLog, Lead, Message, Slot, Summary
 from app.schemas.crm import AppointmentOut, EmailLogOut, LeadDetail, SummaryOut
 from app.schemas.lead import LeadOut
+from app.services.app_config import ai_enabled
 from app.services.mailer import send_summary_email
 from app.services.summary import generate_summary
 
@@ -127,6 +128,7 @@ def dashboard_metrics(db: Session = Depends(get_db)):
             .where(Slot.start_at >= datetime.now(UTC), Appointment.status.in_(("agendado", "confirmado")))
         ),
         "followups_sent": db.scalar(select(func.count()).select_from(Message).where(Message.role == "followup")),
+        "ai_enabled": ai_enabled(),
         "awaiting_followup": db.scalar(
             select(func.count()).select_from(Lead).where(Lead.next_followup_at.is_not(None))
         ),

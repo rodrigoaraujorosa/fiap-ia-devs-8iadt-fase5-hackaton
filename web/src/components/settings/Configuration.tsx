@@ -1,16 +1,33 @@
 "use client";
 
-import { AlertTriangle, Check, DatabaseZap, ExternalLink, FlaskConical, Mail, Moon, Play, Send } from "lucide-react";
+import {
+  AlertTriangle,
+  Bot,
+  Check,
+  DatabaseZap,
+  ExternalLink,
+  FlaskConical,
+  Lock,
+  LogOut,
+  Mail,
+  Moon,
+  Play,
+  Send,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { CHAT_STORAGE_KEY } from "@/components/chat/ChatApp";
 import { Card } from "@/components/ui";
 import {
+  ApiError,
   apiGet,
   apiPost,
   apiPut,
+  setAdminToken,
+  type AIConfig,
+  type AuthStatus,
   type DemoResetResult,
   type EmailConfig,
   type EmailConfigOut,
@@ -716,17 +733,169 @@ function DemoReset() {
   );
 }
 
+function AISettings() {
+  const [saved, setSaved] = useState<AIConfig | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    apiGet<AIConfig>("/config/ai")
+      .then(setSaved)
+      .catch(() => setFailed(true));
+  }, []);
+
+  async function toggle(enabled: boolean) {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      setSaved(await apiPut<AIConfig>("/config/ai", { enabled } satisfies AIConfig));
+      setFeedback({ tone: "ok", text: enabled ? "Atendimento com IA ligado." : "Atendimento com IA pausado." });
+    } catch {
+      setFeedback({ tone: "error", text: "Não foi possível salvar." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!saved) {
+    return (
+      <Card title="Atendimento com IA">
+        {failed ? (
+          <p className="text-sm text-danger">Não consegui carregar a configuração. A API está rodando?</p>
+        ) : (
+          <div className="h-16 animate-pulse rounded-lg bg-surface-2" />
+        )}
+      </Card>
+    );
+  }
+  return (
+    <Card title="Atendimento com IA">
+      <div className={`flex items-start justify-between gap-4 rounded-lg p-3 ${saved.enabled ? "bg-surface-2" : "bg-warm/10"}`}>
+        <div>
+          <p className="flex items-center gap-1.5 text-sm font-medium text-ink">
+            <Bot className="size-4 text-muted" aria-hidden /> Usar as LLMs (Claude)
+          </p>
+          <p className="mt-0.5 text-sm text-ink-2">
+            {saved.enabled ? (
+              <>
+                <span className="font-medium text-good">Ligado.</span> A Laris conversa, qualifica e agenda no chat, no
+                widget e no Telegram; follow-ups e resumos são gerados automaticamente.
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-warm">Pausado.</span> Nada chama o Claude: o chat, o widget e o
+                Telegram respondem um recado fixo pedindo nome e telefone e guardam a mensagem para o corretor.
+                Follow-ups e resumos ficam parados. Use fora das demonstrações.
+              </>
+            )}
+          </p>
+        </div>
+        <Switch checked={saved.enabled} label="Usar as LLMs" disabled={busy} onChange={toggle} />
+      </div>
+      <div className="mt-2">
+        <FeedbackLine feedback={feedback} />
+      </div>
+    </Card>
+  );
+}
+
+function AdminLogin({ onLogin }: { onLogin: () => void }) {
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const { token } = await apiPost<{ token: string }>("/auth/login", { password });
+      setAdminToken(token);
+      onLogin();
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 401 ? "Senha incorreta." : "Não foi possível entrar agora.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card title="Acesso restrito">
+      <form onSubmit={submit} className="space-y-3">
+        <p className="flex items-center gap-1.5 text-sm text-ink-2">
+          <Lock className="size-4 text-muted" aria-hidden /> As configurações são protegidas pela senha de administrador.
+        </p>
+        <Field label="Senha" htmlFor="admin-password">
+          <input
+            id="admin-password"
+            type="password"
+            autoComplete="current-password"
+            autoFocus
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={inputClass}
+          />
+        </Field>
+        <button type="submit" disabled={busy || !password} className={`${buttonClass} bg-brand text-white hover:opacity-90`}>
+          {busy ? "Entrando…" : "Entrar"}
+        </button>
+        {error && <FeedbackLine feedback={{ tone: "error", text: error }} />}
+      </form>
+    </Card>
+  );
+}
+
 export function Configuration() {
+  const [auth, setAuth] = useState<AuthStatus | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  const check = useCallback(async () => {
+    try {
+      setAuth(await apiGet<AuthStatus>("/auth/status"));
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const first = window.setTimeout(check, 0);
+    return () => window.clearTimeout(first);
+  }, [check]);
+
+  function logout() {
+    setAdminToken(null);
+    void check();
+  }
+
+  const open = auth && (!auth.required || auth.authenticated);
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink">Configurações</h1>
-        <p className="text-sm text-ink-2">Ajustes que valem na hora, sem reiniciar a API. O .env define só os valores iniciais.</p>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink">Configurações</h1>
+          <p className="text-sm text-ink-2">Ajustes que valem na hora, sem reiniciar a API. O .env define só os valores iniciais.</p>
+        </div>
+        {open && auth.required && (
+          <button type="button" onClick={logout} className={`${buttonClass} border border-line text-ink-2 hover:text-ink`}>
+            <LogOut className="size-4" aria-hidden /> Sair
+          </button>
+        )}
       </div>
-      <FollowupSettings />
-      <EmailSettings />
-      <TelegramSettings />
-      <DemoReset />
+      {failed && <p className="text-sm text-danger">Não consegui falar com a API. Ela está rodando?</p>}
+      {!auth && !failed && <div className="h-28 animate-pulse rounded-lg bg-surface-2" />}
+      {auth && !open && <AdminLogin onLogin={check} />}
+      {open && (
+        <>
+          <AISettings />
+          <FollowupSettings />
+          <EmailSettings />
+          <TelegramSettings />
+          <DemoReset />
+        </>
+      )}
     </div>
   );
 }

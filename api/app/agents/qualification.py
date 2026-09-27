@@ -87,7 +87,8 @@ class LeadAnalysis(BaseModel):
         "empresa, expansão, imóvel que gostou, restrições...). Não inclua sugestões feitas só pela SDR. Ou ''"
     )
     route: Route = Field(
-        description="'agendamento' se o cliente quer marcar/remarcar visita ou reunião ou está escolhendo horário; "
+        description="'agendamento' se o cliente quer marcar/remarcar visita ou reunião, está escolhendo horário ou "
+        "está respondendo (com o telefone ou recusando) ao pedido de telefone para confirmar a visita; "
         "senão 'investimento' para investidores; senão 'compra_aluguel'"
     )
 

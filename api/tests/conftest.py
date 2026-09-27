@@ -4,6 +4,7 @@ import os
 # Variáveis de ambiente têm prioridade sobre o .env; isso precisa rodar antes de importar o app.
 os.environ.update(SMTP_HOST="127.0.0.1", SMTP_PORT="1025", SMTP_USER="", SMTP_PASSWORD="", SMTP_SSL="false",
                   SMTP_STARTTLS="false")  # fmt: skip
+os.environ["ADMIN_PASSWORD"] = ""  # a senha de administrador do .env não vale nos testes (test_admin liga quando quer)
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

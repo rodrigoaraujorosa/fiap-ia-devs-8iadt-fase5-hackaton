@@ -77,6 +77,11 @@ class MessageIn(BaseModel):
     context: PageContext | None = None
 
 
+class ContactIn(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    phone: str = Field(min_length=8, max_length=30)
+
+
 class MessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

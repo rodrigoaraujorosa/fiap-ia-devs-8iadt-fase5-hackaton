@@ -4,16 +4,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_admin
 from app.db.session import get_db
 from app.jobs.followup import run_followups
 from app.services import telegram
 from app.services.app_config import (
+    AIConfig,
     EmailConfig,
     FollowupConfig,
     TelegramConfig,
+    get_ai_config,
     get_email_config,
     get_followup_config,
     get_telegram_config,
+    save_ai_config,
     save_email_config,
     save_followup_config,
     save_telegram_config,
@@ -21,7 +25,7 @@ from app.services.app_config import (
 from app.services.demo import reset_demo
 from app.services.mailer import send_test_email, smtp_info
 
-router = APIRouter(tags=["configuração"])
+router = APIRouter(tags=["configuração"], dependencies=[Depends(require_admin)])
 
 
 class SmtpInfo(BaseModel):
@@ -44,6 +48,19 @@ class TelegramConfigOut(TelegramConfig):
     username: str | None
     name: str | None
     link: str | None
+
+
+@router.get("/config/ai", response_model=AIConfig)
+def read_ai_config(db: Session = Depends(get_db)):
+    """Liga/desliga do atendimento com IA."""
+    return get_ai_config(db)
+
+
+@router.put("/config/ai", response_model=AIConfig)
+def update_ai_config(config: AIConfig, db: Session = Depends(get_db)):
+    """Desligada, nada chama o Claude: o chat e o Telegram respondem um recado fixo e registram a mensagem,
+    e o follow-up e os resumos automáticos param. Vale na hora."""
+    return save_ai_config(db, config)
 
 
 @router.get("/config/followup", response_model=FollowupConfig)

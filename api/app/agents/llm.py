@@ -6,11 +6,23 @@ from typing import Any
 import anthropic
 
 from app.core.config import get_settings
+from app.services.app_config import ai_enabled
+
+
+class AIPausedError(Exception):
+    """Atendimento com IA desligado na tela de configurações: nenhuma chamada ao Claude é feita."""
 
 
 @lru_cache
-def claude() -> anthropic.Anthropic:
+def _client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
+
+
+def claude() -> anthropic.Anthropic:
+    """Cliente do Claude. Toda chamada passa por aqui, então o liga/desliga da IA vale para tudo."""
+    if not ai_enabled():
+        raise AIPausedError("Atendimento com IA pausado nas configurações")
+    return _client()
 
 
 def text_of(message: dict[str, Any]) -> str:

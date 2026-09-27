@@ -31,6 +31,7 @@ export const AGENT_LABEL: Record<string, string> = {
   investimento: "Especialista em investimentos",
   agendamento: "Agente de agendamento",
   follow_up: "Follow-up automático",
+  pausa: "Recado automático (IA pausada)",
 };
 
 export const FIELD_LABEL: Record<string, string> = {

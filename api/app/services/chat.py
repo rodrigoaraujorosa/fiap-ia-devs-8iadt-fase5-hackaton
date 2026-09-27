@@ -10,17 +10,34 @@ from collections import defaultdict
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 
+from app.agents.qualification import normalize_phone, proper_name
 from app.agents.runtime import get_graph
 from app.core import observability
 from app.db.session import SessionLocal
 from app.models import Lead, Message, Property
 from app.models.enums import MessageRole
 from app.schemas.lead import LeadOut, PageContext
-from app.services.app_config import get_followup_config
+from app.services.app_config import ai_enabled, get_followup_config
 
 log = logging.getLogger(__name__)
 _lead_locks: defaultdict[uuid.UUID, threading.Lock] = defaultdict(threading.Lock)
 PHONE_REQUEST = re.compile(r"whats\s?app|telefone|celular", re.IGNORECASE)
+PHONE_IN_TEXT = re.compile(r"\+?\d[\d\s().-]{7,}\d")
+
+# IA desligada nas configurações: resposta fixa, sem chamar o Claude (o recado fica registrado para o corretor)
+PAUSED_REPLY = (
+    "Nosso atendimento automático está pausado no momento. Deixe seu nome e telefone que um corretor retorna 😊"
+)
+PAUSED_THANKS = "Obrigada! Seu contato ficou anotado e um corretor retorna em breve."
+
+# sem IA, o nome sai por regra: "meu nome é X", "sou o X", "me chamo X" ou o texto curto que acompanha o telefone
+_WORD = r"[A-Za-zÀ-ÿ]+"
+NAME_INTRO = re.compile(rf"\b(?:meu nome é|me chamo|aqui é (?:o |a )?|sou (?:o |a )?)\s*({_WORD}(?:\s+{_WORD})?)", re.I)
+NOT_NAME = {
+    "oi", "olá", "ola", "bom", "boa", "dia", "tarde", "noite", "tudo", "bem", "meu", "minha", "nome", "é", "e", "o",
+    "a", "telefone", "fone", "tel", "whatsapp", "zap", "celular", "contato", "número", "numero", "obrigado",
+    "obrigada", "sim", "ok", "pode", "ligar", "me", "chamo", "sou", "aqui",
+}  # fmt: skip
 
 
 def sse(event: str, data: dict) -> str:
@@ -42,6 +59,10 @@ def run_turn(lead_id: uuid.UUID, text: str, context: PageContext | None = None) 
         lead.followup_count = 0
         lead.next_followup_at = None
         db.commit()
+
+    if not ai_enabled():
+        yield _paused_turn(lead_id, text)
+        return
 
     reply, bubbles, agent, property_ids, notices = "", [], None, [], {}
     graph_input = {"lead_id": str(lead_id), "messages": [{"role": "user", "content": text}]}
@@ -94,6 +115,57 @@ def run_turn(lead_id: uuid.UUID, text: str, context: PageContext | None = None) 
             "agent": agent,
             "lead": LeadOut.model_validate(lead).model_dump(),
         }
+
+
+def guess_name(text: str) -> str | None:
+    """Nome do cliente numa mensagem, sem LLM (modo IA pausada). None se não der para ter certeza."""
+    phone = PHONE_IN_TEXT.search(text)
+    rest = PHONE_IN_TEXT.sub(" ", text)
+    if match := NAME_INTRO.search(rest):
+        words = [w for w in match.group(1).split() if w.lower() not in NOT_NAME]
+    elif phone:  # "Juliano, 51 99999-1234": o que sobra ao lado do telefone é o nome
+        words = [w for w in re.findall(_WORD, rest) if w.lower() not in NOT_NAME]
+        if len(words) > 3:
+            return None
+    else:
+        return None
+    return proper_name(" ".join(words[:3])) if words else None
+
+
+def _paused_turn(lead_id: uuid.UUID, text: str) -> dict:
+    """Turno sem IA: guarda nome e telefone, se vieram na mensagem, e responde com o recado fixo."""
+    with SessionLocal() as db:
+        lead = db.get(Lead, lead_id)
+        if not lead.phone and (match := PHONE_IN_TEXT.search(text)):
+            lead.phone = normalize_phone(match.group())
+        if not lead.name and (name := guess_name(text)):
+            lead.name = name
+        reply = PAUSED_THANKS if lead.phone else PAUSED_REPLY
+        db.add(Message(lead_id=lead_id, role=MessageRole.ASSISTANT, content=reply, agent="pausa",
+                       meta={"property_ids": []}))  # fmt: skip
+        lead.last_message_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(lead)
+        return {"type": "done", "reply": reply, "bubbles": [reply], "property_ids": [], "agent": None,
+                "lead": LeadOut.model_validate(lead).model_dump(),
+                "contact_form": not (lead.name and lead.phone)}  # fmt: skip
+
+
+def save_contact(lead_id: uuid.UUID, name: str, phone: str) -> Lead:
+    """Formulário de contato do chat (IA pausada): nome e telefone digitados em campos próprios, sem adivinhar."""
+    with SessionLocal() as db:
+        lead = db.get(Lead, lead_id)
+        now = datetime.now(UTC)
+        lead.name, lead.phone = proper_name(name), phone
+        db.add(Message(lead_id=lead_id, role=MessageRole.USER, content=f"Nome: {lead.name} · Telefone: {phone}",
+                       meta={"contact_form": True}))  # fmt: skip
+        db.add(Message(lead_id=lead_id, role=MessageRole.ASSISTANT, content=PAUSED_THANKS, agent="pausa",
+                       meta={"property_ids": []}))  # fmt: skip
+        lead.last_message_at = lead.last_lead_message_at = now
+        db.commit()
+        db.refresh(lead)
+        db.expunge(lead)
+        return lead
 
 
 def stream_turn_sse(lead_id: uuid.UUID, text: str, context: PageContext | None = None) -> Iterator[str]:

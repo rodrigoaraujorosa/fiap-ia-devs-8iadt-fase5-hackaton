@@ -26,3 +26,26 @@ def test_search_blocked_until_client_states_purpose(db, lead):
     db.commit()
     allowed = run_tool(ctx, "buscar_imoveis", {"purpose": "aluguel", "max_price": 20000})
     assert not allowed.is_error and allowed.properties
+
+
+def test_booking_requires_phone_unless_declined(db, lead, monkeypatch):
+    from sqlalchemy import select
+
+    from app.agents import tools
+    from app.models import Appointment, Slot
+
+    monkeypatch.setattr(tools, "submit_summary", lambda *a: None)  # sem resumo (LLM) nem e-mail
+    ctx = ToolContext(db=db, lead_id=lead.id)
+    slot = db.scalars(select(Slot).where(Slot.is_booked.is_(False)).limit(1)).first()
+    blocked = run_tool(ctx, "agendar", {"slot_id": slot.id, "tipo": "visita"})
+    assert blocked.is_error and "telefone" in blocked.content and not blocked.event
+    assert not db.get(Slot, slot.id).is_booked
+
+    lead.extra = {"phone_declined": True}  # o cliente se recusou: agenda sem telefone
+    db.commit()
+    booked = run_tool(ctx, "agendar", {"slot_id": slot.id, "tipo": "visita"})
+    assert not booked.is_error and booked.event["type"] == "appointment"
+    for appt in db.scalars(select(Appointment).where(Appointment.lead_id == lead.id)):
+        appt.slot.is_booked = False
+        db.delete(appt)
+    db.commit()

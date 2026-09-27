@@ -52,6 +52,7 @@ def test_config_api_roundtrip(client, restore_config):
 def test_disabled_followup_skips_job_unless_forced(db, restore_config, monkeypatch):
     claimed = []
     monkeypatch.setattr(followup, "_claim_due_leads", lambda: claimed.append(True) or [])
+    monkeypatch.setattr(followup, "ai_enabled", lambda: True)  # independe do liga/desliga da IA salvo no banco
     save_followup_config(db, restore_config.model_copy(update={"enabled": False}))
     assert followup.run_followups() == 0
     assert not claimed  # desligado: o job nem reserva leads

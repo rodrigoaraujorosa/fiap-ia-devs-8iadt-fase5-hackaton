@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, CalendarCheck, Headset, RotateCcw, Send, SendHorizontal, X } from "lucide-react";
+import { BellRing, CalendarCheck, Headset, RotateCcw, Send, SendHorizontal, UserRound, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LarisAvatar } from "@/components/Brand";
@@ -8,6 +8,7 @@ import { LeadPanel, type Analysis, type AppointmentInfo } from "@/components/cha
 import { PropertyCard } from "@/components/PropertyCard";
 import { Markdown } from "@/components/ui";
 import {
+  ApiError,
   apiGet,
   apiPost,
   streamChat,
@@ -50,6 +51,8 @@ const SUGGESTIONS = [
   "Preciso de um galpão perto da Via Dutra.",
 ];
 const POLL_MS = 5000;
+const PAUSED_WELCOME =
+  "Oi! Nosso atendimento automático está pausado no momento 😊 Deixe seu nome e telefone abaixo que um corretor retorna.";
 
 function embedWelcome(brand: string, property: Property | null): string {
   if (!property) {
@@ -103,6 +106,7 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
   const [input, setInput] = useState(embed?.draft ?? "");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [telegram, setTelegram] = useState<TelegramAvailability | null>(null);
+  const [aiEnabled, setAiEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
   const [activity, setActivity] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -182,6 +186,25 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
       window.removeEventListener("message", onMessage);
     };
   }, [embed?.hostOrigin]);
+
+  // IA pausada nas configurações: a Laris não conversa; o chat pede nome e telefone num formulário
+  useEffect(() => {
+    apiGet<{ ai_enabled: boolean }>("/chat/status")
+      .then((s) => setAiEnabled(s.ai_enabled))
+      .catch(() => {});
+  }, []);
+
+  async function sendContact(name: string, phone: string) {
+    let id = leadIdRef.current;
+    if (!id) {
+      const created = await apiPost<Lead>("/chat/sessions", embed ? { source: embed.source } : {});
+      id = created.id;
+      saveLeadId(id);
+    }
+    setLead(await apiPost<Lead>(`/chat/${id}/contact`, { name, phone }));
+    lastServerId.current = null;
+    await syncFromServer(id);
+  }
 
   // bot do Telegram disponível? (botão "Continuar no Telegram")
   useEffect(() => {
@@ -277,6 +300,7 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
         break;
       case "done":
         setLead(event.lead);
+        if (event.contact_form !== undefined || event.agent) setAiEnabled(!event.contact_form && Boolean(event.agent));
         patchLast((m) => ({
           ...m,
           content: event.bubbles.at(-1) || m.content,
@@ -338,7 +362,8 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
   }
 
   // --------------------------------------------------------------- render
-  const welcome = embed ? embedWelcome(embed.brand, pageProperty) : WELCOME;
+  const welcome = !aiEnabled ? PAUSED_WELCOME : embed ? embedWelcome(embed.brand, pageProperty) : WELCOME;
+  const askContact = !aiEnabled && !busy && !(lead?.name && lead?.phone);
   const suggestions = embed ? embedSuggestions(pageProperty) : SUGGESTIONS;
   const chat = (
       <section
@@ -353,7 +378,7 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-ink">Laris · {embed ? embed.brand : "ImobiQ"}</p>
             <p className="truncate text-xs text-ink-2" aria-live="polite">
-              {busy ? (activity ? `${activity}…` : "digitando…") : "online · responde na hora"}
+              {busy ? (activity ? `${activity}…` : "digitando…") : aiEnabled ? "online · responde na hora" : "deixe seu contato · um corretor retorna"}
             </p>
           </div>
           {telegram?.available && (
@@ -421,7 +446,8 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
               )}
             </div>
           ))}
-          {!messages.length && (
+          {askContact && <ContactForm onSubmit={sendContact} />}
+          {aiEnabled && !messages.length && (
             <div className="flex flex-wrap gap-2 pt-2">
               {suggestions.map((s) => (
                 <button
@@ -504,6 +530,75 @@ function Bubble({ role, at, children }: { role: UiMessage["role"]; at: string | 
         {at && <p className="mt-1 text-right text-[10px] text-muted">{clockTime(at)}</p>}
       </div>
     </div>
+  );
+}
+
+function ContactForm({ onSubmit }: { onSubmit: (name: string, phone: string) => Promise<void> }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await onSubmit(name.trim(), phone.trim());
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 422
+          ? "Confira o telefone: informe o DDD e o número."
+          : "Não consegui enviar agora. Tente de novo em instantes.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const field =
+    "w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focus:border-brand";
+  return (
+    <form onSubmit={submit} className="ml-8 max-w-sm space-y-2 rounded-2xl border border-line bg-surface p-3 shadow-sm">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-ink-2">
+        <UserRound aria-hidden size={14} /> Seus dados para o corretor retornar
+      </p>
+      <label className="block">
+        <span className="sr-only">Nome</span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          minLength={2}
+          maxLength={80}
+          autoComplete="name"
+          placeholder="Nome"
+          className={field}
+        />
+      </label>
+      <label className="block">
+        <span className="sr-only">Telefone com DDD</span>
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          required
+          type="tel"
+          inputMode="tel"
+          maxLength={30}
+          autoComplete="tel"
+          placeholder="Telefone com DDD"
+          className={field}
+        />
+      </label>
+      {error && <p className="text-xs text-danger">{error}</p>}
+      <button
+        type="submit"
+        disabled={busy || name.trim().length < 2 || phone.trim().length < 8}
+        className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-medium text-brand-ink disabled:opacity-40"
+      >
+        {busy ? "Enviando…" : "Enviar contato"}
+      </button>
+    </form>
   );
 }
 

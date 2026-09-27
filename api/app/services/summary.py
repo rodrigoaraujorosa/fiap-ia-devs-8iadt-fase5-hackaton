@@ -10,11 +10,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.agents.llm import claude, usage_details
+from app.agents.llm import AIPausedError, claude, usage_details
 from app.core import observability
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models import Lead, Message, Summary
+from app.services.app_config import ai_enabled
 from app.services.mailer import send_summary_email
 from app.services.scheduling import format_slot, upcoming_appointment
 
@@ -115,10 +116,11 @@ def _generate_in_background(lead_id: uuid.UUID, trigger: str) -> None:
         with observability.trace("resumo_corretor", session_id=str(lead_id)), SessionLocal() as db:
             summary = generate_summary(db, lead_id)
             send_summary_email(db, lead_id, trigger, summary)
-    except (anthropic.APIError, RuntimeError):
+    except (anthropic.APIError, RuntimeError, AIPausedError):
         log.exception("Falha ao gerar resumo do lead %s", lead_id)
 
 
 def submit_summary(lead_id: uuid.UUID, trigger: str) -> None:
     """Gera o resumo e o envia ao corretor por e-mail, sem bloquear a resposta ao lead."""
-    _executor.submit(_generate_in_background, lead_id, trigger)
+    if ai_enabled():  # IA desligada: sem resumo automático (o dashboard ainda gera sob demanda quando ela voltar)
+        _executor.submit(_generate_in_background, lead_id, trigger)

@@ -22,7 +22,7 @@ from app.db.session import SessionLocal
 from app.models import Lead, Message
 from app.models.enums import LeadStatus, MessageRole
 from app.services import telegram
-from app.services.app_config import get_followup_config
+from app.services.app_config import ai_enabled, get_followup_config
 
 log = logging.getLogger(__name__)
 
@@ -129,6 +129,8 @@ def send_followup(lead_id: uuid.UUID, attempt_count: int, last_lead_message_at: 
 
 def run_followups(force: bool = False) -> int:
     """Ciclo do job. Respeita liga/desliga e horário de silêncio; force=True (disparo manual) ignora os dois."""
+    if not ai_enabled():  # IA desligada: os leads vencidos esperam a IA voltar
+        return 0
     cfg = get_followup_config()
     if not force and (not cfg.enabled or cfg.in_quiet_hours()):
         return 0

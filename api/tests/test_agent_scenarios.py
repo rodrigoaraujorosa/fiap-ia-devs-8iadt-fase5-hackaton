@@ -90,12 +90,31 @@ def test_agendamento_de_visita_com_especialista(db):
                    "Paula, sócia da Vértice Capital, e preciso mudar em 1 mês")  # fmt: skip
     events = _talk(lead.id, "Quero visitar a primeira que você mostrou. Pode ser no próximo dia útil, de tarde?")
     assert any(e["type"] == "agent" and e["agent"] == "agendamento" for e in events)
-    if not any(e["type"] == "appointment" for e in events):  # o agente pode primeiro oferecer opções
-        events = _talk(lead.id, "Pode ser o primeiro horário que você falou")
+    assert not any(e["type"] == "appointment" for e in events), "sem telefone a visita não pode ser confirmada"
+    events = _talk(lead.id, "Pode ser o primeiro horário que você falou")
+    assert not any(e["type"] == "appointment" for e in events)
+    assert any(w in events[-1]["reply"].lower() for w in ("whatsapp", "telefone")), events[-1]["reply"]
+    events = _talk(lead.id, "Claro, é 11 97777-6666")
     appointment = next(e for e in events if e["type"] == "appointment")
     assert appointment["tipo"] == "visita"
     assert appointment["com"] == "Mariana Costa"  # especialista em andares, lajes e prédios
     assert events[-1]["lead"]["status"] == "agendado"
+    assert events[-1]["lead"]["phone"] == "+55 11 97777-6666"
+
+
+def test_visita_sem_telefone_quando_o_cliente_recusa(db):
+    """O telefone é pedido para confirmar a visita; se o cliente se recusar, a visita é agendada assim mesmo."""
+    lead = _new_lead(db)
+    _talk(lead.id, "Sou o Marcos, da Lumen Engenharia, e quero alugar um conjunto de 200 m² na Paulista, até 40 mil. "
+                   "Eu decido e precisamos mudar em 2 meses")  # fmt: skip
+    events = _talk(lead.id, "Quero visitar a primeira opção. Pode ser no próximo dia útil de manhã?")
+    if not any(e["type"] == "slots" for e in events):
+        events = _talk(lead.id, "Pode me mostrar os horários?")
+    events = _talk(lead.id, "Pode ser o primeiro horário")
+    assert not any(e["type"] == "appointment" for e in events)
+    events = _talk(lead.id, "Prefiro não passar meu telefone, pode confirmar assim mesmo")
+    assert any(e["type"] == "appointment" for e in events), events[-1]["reply"]
+    assert events[-1]["lead"]["phone"] is None and events[-1]["lead"]["extra"].get("phone_declined")
 
 
 def test_exemplo_3_follow_up_com_contexto(db):
@@ -135,10 +154,8 @@ def test_conversa_rodrigo_regressao(db):
 
     events = _talk(lead.id, "Gostei da primeira opção, quero visitar na próxima terça à tarde")
     replies = events[-1]["reply"].lower()
-    if not any(e["type"] == "appointment" for e in events):
-        events = _talk(lead.id, "Pode ser o primeiro horário. Meu WhatsApp é 11 98888-7777")
-        replies += " " + events[-1]["reply"].lower()
-    else:
-        events = _talk(lead.id, "Meu WhatsApp é 11 98888-7777")
+    assert not any(e["type"] == "appointment" for e in events), "sem telefone a visita não pode ser confirmada"
     assert any(w in replies for w in ("whatsapp", "telefone", "contato")), "deveria pedir o telefone ao agendar"
+    events = _talk(lead.id, "Pode ser o primeiro horário. Meu WhatsApp é 11 98888-7777")
+    assert any(e["type"] == "appointment" for e in events), events[-1]["reply"]
     assert events[-1]["lead"]["phone"] == "+55 11 98888-7777"
