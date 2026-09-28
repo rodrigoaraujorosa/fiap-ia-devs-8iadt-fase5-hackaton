@@ -10,7 +10,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![Telegram](https://img.shields.io/badge/Telegram-bot-26A5E4?logo=telegram&logoColor=white)
 ![AWS](https://img.shields.io/badge/Deploy-AWS-FF9900?logo=amazonwebservices&logoColor=white)
-![License](https://img.shields.io/badge/licen%C3%A7a-MIT-green)
+![License](https://img.shields.io/badge/licen%C3%A7a-PolyForm%20Noncommercial%201.0.0-orange)
 
 POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · Grupo 65: um agente SDR para **imóveis comerciais** que atende empresas e investidores, conversa de forma humanizada, faz a qualificação B2B (atividade, espaço, orçamento, quem decide e prazo), sugere conjuntos, andares corporativos, lajes, prédios e galpões logísticos de uma base simulada (inspirada na carteira de uma imobiliária de real estate corporativo de São Paulo), agenda visitas com o corretor especialista, faz follow-up automático e envia resumos aos corretores. A base também tem alguns residenciais de alto padrão, e a Laris atende os dois segmentos.
 
@@ -192,4 +192,10 @@ uv run ruff check .
 
 ## 📄 Licença
 
-Distribuído sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE).
+Copyright © 2026 Rodrigo de Araujo Rosa. Distribuído sob a **[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)** (texto completo em [LICENSE](LICENSE)).
+
+- ✅ **Permitido para fins não comerciais:** ler, rodar, estudar, avaliar e modificar o código, inclusive por instituições de ensino e pesquisa (ex.: avaliação do hackathon) e para uso pessoal.
+- 🚫 **Não permitido sem autorização:** qualquer uso comercial, como oferecer o sistema ou partes dele como produto ou serviço, ou usá-lo na operação de uma empresa.
+- 📌 Quem redistribuir o código precisa manter a licença e a linha `Required Notice` do arquivo [LICENSE](LICENSE).
+
+Para licenciamento comercial, fale com o autor.
