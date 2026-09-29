@@ -16,7 +16,10 @@ services:
       retries: 10
 
   api:
-    build: ./api
+    build:
+      context: ./api
+      additional_contexts:
+        data: ./data  # a base simulada entra na imagem (em produção não há o volume abaixo)
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://sdr:sdr@db:5432/sdr

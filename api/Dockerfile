@@ -9,7 +9,9 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY . .
-ENV PATH="/app/.venv/bin:$PATH"
+# base simulada (imóveis, corretores, leads de demo): contexto extra "data" = pasta data/ da raiz do repositório
+COPY --from=data . /data
+ENV PATH="/app/.venv/bin:$PATH" DATA_DIR=/data
 
 EXPOSE 8000
 CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

@@ -1,0 +1,68 @@
+# Produção (EC2): imagens do Amazon ECR publicadas pelo GitHub Actions, HTTPS automático pelo Caddy.
+# Não use diretamente: o deploy grava este arquivo em /opt/imobiq e roda ./dc (docker compose com o .env
+# do servidor e o release.env, que traz o registro e a versão das imagens).
+name: imobiq
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sdr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env do servidor}
+      POSTGRES_DB: sdr
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sdr -d sdr"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    image: ${REGISTRY}/imobiq-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://sdr:${POSTGRES_PASSWORD}@db:5432/sdr
+      ENVIRONMENT: production
+      EMBEDDING_CACHE_DIR: /models
+      PUBLIC_APP_URL: https://${DOMAIN:?defina DOMAIN no .env do servidor}
+      CORS_ORIGINS: '["https://${DOMAIN}"]'
+      TRUST_PROXY_HEADERS: "true"  # o IP do visitante vem do Caddy (X-Forwarded-For)
+    volumes:
+      - models:/models
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: ${REGISTRY}/imobiq-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      INTERNAL_API_URL: http://api:8000
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+
+volumes:
+  pgdata:
+  models:
+  caddy_data:
+  caddy_config:

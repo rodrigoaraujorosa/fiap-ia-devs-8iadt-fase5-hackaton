@@ -1,0 +1,84 @@
+# Deploy contínuo: push na main -> CI -> imagens no Amazon ECR -> EC2 atualizada pelo SSM -> teste de fumaça.
+# Sem chaves da AWS no GitHub: o Actions assume uma role por OIDC (credenciais temporárias, só para esta execução).
+# Configuração (Settings -> Secrets and variables -> Actions -> Variables): AWS_ROLE_ARN, AWS_REGION,
+# EC2_INSTANCE_ID e APP_DOMAIN. Enquanto AWS_ROLE_ARN não existir, só o CI roda.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false  # nunca interrompe um deploy no meio
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Imagem ${{ matrix.app }} -> ECR
+    needs: ci
+    if: vars.AWS_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # OIDC
+    strategy:
+      matrix:
+        app: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.app }}
+          build-contexts: ${{ matrix.app == 'api' && 'data=./data' || '' }}
+          build-args: ${{ matrix.app == 'web' && format('NEXT_PUBLIC_API_URL=https://{0}/api', vars.APP_DOMAIN) || '' }}
+          push: true
+          provenance: false
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/imobiq-${{ matrix.app }}:${{ github.sha }}
+            ${{ steps.ecr.outputs.registry }}/imobiq-${{ matrix.app }}:latest
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  deploy:
+    name: EC2 (SSM)
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Atualiza a EC2
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: bash deploy/ssm-deploy.sh
+      - name: Teste de fumaça (https://${{ vars.APP_DOMAIN }})
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "https://$APP_DOMAIN/api/health" && curl -fsS -o /dev/null "https://$APP_DOMAIN/"; then
+              echo; echo "No ar: https://$APP_DOMAIN"; exit 0
+            fi
+            sleep 10
+          done
+          echo "O site não respondeu em 5 minutos"; exit 1

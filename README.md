@@ -139,8 +139,20 @@ api/    FastAPI + agentes (app/), migrations (alembic/), seed (scripts/), testes
 web/    Next.js — chat do lead, dashboard do corretor, configurações e o widget (public/widget.js)
 site-exemplo/  gerador do site fictício da "Imobiliária Exemplo", com o widget embutido
 data/   base simulada: 76 imóveis (68 comerciais e 8 residenciais de alto padrão) em SP e região, com edifícios fictícios (gerador determinístico), corretores por especialidade e leads de demonstração
-docs/   arquitetura, explicação da IA e pitch
+docs/   arquitetura, explicação da IA, deploy e pitch
+deploy/ produção: docker-compose.prod.yml, Caddyfile, user data da EC2, políticas de IAM e script de deploy
+.github/workflows/  CI (lint e testes) e deploy contínuo na AWS
 ```
+
+## ☁️ Deploy na AWS
+
+Push na `main` → **GitHub Actions** roda o CI (ruff, pytest com Postgres, eslint, next build) → publica as imagens no **Amazon ECR** → atualiza a **EC2** pelo **SSM Run Command** → teste de fumaça em `https://imobiq.arrtsoftware.com.br/api/health`.
+
+- **Sem chaves da AWS no GitHub** (OIDC com credenciais temporárias) e **sem porta 22 aberta** (deploy pelo SSM, acesso pelo Session Manager).
+- Na EC2, Docker Compose com **Caddy** (HTTPS automático): o app na raiz e a API em `/api`, no mesmo domínio.
+- Segredos só no `.env` do servidor; migrations e seed automáticos a cada deploy.
+
+Passo a passo completo (console da AWS, DNS na Hostinger, variáveis do GitHub, operação e custos): **[docs/deploy.md](docs/deploy.md)**.
 
 ## 🚀 Como rodar
 
@@ -187,7 +199,8 @@ uv run ruff check .
 - [x] **Dia 4** — Chat do lead (streaming + painel da IA em tempo real), dashboard do corretor e detalhe do lead
 - [x] **Diferenciais já entregues** — e-mail do resumo ao corretor com convite (.ics), widget para sites de imobiliárias, site fictício, bot do Telegram
 - [x] **Segurança** — senha de administrador, liga/desliga das LLMs, limite de mensagens, domínios do widget, proteção contra prompt injection e dados pessoais mascarados no Langfuse
-- [ ] **Próximos** — deploy AWS, voz no chat
+- [ ] **Deploy contínuo** — pipeline pronto (CI + imagens no ECR + deploy na EC2 via SSM, OIDC sem chaves); falta configurar a AWS e publicar
+- [ ] **Próximos** — voz no chat
 - [ ] **Dia 6** — Documentação, demo e pitch
 
 ## 📄 Licença

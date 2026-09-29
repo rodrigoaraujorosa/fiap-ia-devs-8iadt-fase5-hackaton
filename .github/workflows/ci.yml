@@ -1,0 +1,70 @@
+# CI: lint e testes da API (com Postgres + pgvector) e do app web.
+# Roda em PRs e pushes fora da main; na main, é chamado pelo deploy.yml antes de publicar.
+# Os cenários com o Claude (RUN_LLM_TESTS=1) ficam de fora: custam tokens.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    name: API · ruff + pytest
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: sdr
+          POSTGRES_PASSWORD: sdr
+          POSTGRES_DB: sdr
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sdr -d sdr" --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://sdr:sdr@localhost:5432/sdr
+      EMBEDDING_CACHE_DIR: ${{ github.workspace }}/.models
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - name: Modelo de embeddings em cache (evita baixar ~220 MB a cada execução)
+        uses: actions/cache@v4
+        with:
+          path: .models
+          key: embeddings-${{ hashFiles('api/app/core/config.py') }}
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - name: pytest (banco sdr_test criado e semeado pelo conftest)
+        run: uv run pytest -q
+
+  web:
+    name: Web · eslint + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx eslint src --max-warnings=0
+      - name: next build (checa os tipos e o build de produção)
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1

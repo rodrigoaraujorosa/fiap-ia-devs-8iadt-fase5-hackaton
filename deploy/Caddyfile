@@ -1,0 +1,21 @@
+# Um domínio, um certificado (Let's Encrypt, renovado sozinho): o app web na raiz e a API em /api.
+# Mesma origem para o navegador, então não há CORS entre o app e a API.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# /api/chat/... -> api:8000/chat/... (o SSE do chat passa direto: o Caddy não segura o stream)
+	handle_path /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

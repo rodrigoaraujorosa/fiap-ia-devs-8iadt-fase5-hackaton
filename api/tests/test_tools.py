@@ -29,6 +29,8 @@ def test_search_blocked_until_client_states_purpose(db, lead):
 
 
 def test_booking_requires_phone_unless_declined(db, lead, monkeypatch):
+    from datetime import UTC, datetime, timedelta
+
     from sqlalchemy import select
 
     from app.agents import tools
@@ -36,7 +38,8 @@ def test_booking_requires_phone_unless_declined(db, lead, monkeypatch):
 
     monkeypatch.setattr(tools, "submit_summary", lambda *a: None)  # sem resumo (LLM) nem e-mail
     ctx = ToolContext(db=db, lead_id=lead.id)
-    slot = db.scalars(select(Slot).where(Slot.is_booked.is_(False)).limit(1)).first()
+    future = datetime.now(UTC) + timedelta(hours=2)  # o banco de testes é reaproveitado: horários antigos já passaram
+    slot = db.scalars(select(Slot).where(Slot.is_booked.is_(False), Slot.start_at > future).limit(1)).first()
     blocked = run_tool(ctx, "agendar", {"slot_id": slot.id, "tipo": "visita"})
     assert blocked.is_error and "telefone" in blocked.content and not blocked.event
     assert not db.get(Slot, slot.id).is_booked
