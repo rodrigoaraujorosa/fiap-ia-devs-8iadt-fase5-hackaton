@@ -199,7 +199,7 @@ uv run ruff check .
 - [x] **Dia 4** — Chat do lead (streaming + painel da IA em tempo real), dashboard do corretor e detalhe do lead
 - [x] **Diferenciais já entregues** — e-mail do resumo ao corretor com convite (.ics), widget para sites de imobiliárias, site fictício, bot do Telegram
 - [x] **Segurança** — senha de administrador, liga/desliga das LLMs, limite de mensagens, domínios do widget, proteção contra prompt injection e dados pessoais mascarados no Langfuse
-- [ ] **Deploy contínuo** — pipeline pronto (CI + imagens no ECR + deploy na EC2 via SSM, OIDC sem chaves); falta configurar a AWS e publicar
+- [x] **Deploy contínuo** — no ar em https://imobiq.arrtsoftware.com.br: GitHub Actions (CI + imagens no ECR + deploy na EC2 via SSM, OIDC sem chaves)
 - [ ] **Próximos** — voz no chat
 - [ ] **Dia 6** — Documentação, demo e pitch
 

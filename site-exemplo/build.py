@@ -8,14 +8,16 @@ A base de imóveis é a mesma da ImobiQ (data/properties.json), então a Laris c
 
 Uso:
     python site-exemplo/build.py                                   # widget local (http://localhost:3001)
-    python site-exemplo/build.py --widget https://imobiq.arrtsoftware.com.br/widget.js
+    python site-exemplo/build.py --widget https://imobiq.arrtsoftware.com.br/widget.js --zip
 
-Saída em site-exemplo/dist/ (é só subir essa pasta para qualquer hospedagem estática).
+Saída em site-exemplo/dist/ (é só subir essa pasta para qualquer hospedagem estática). Com --zip, gera também
+site-exemplo/imobiliaria-exemplo.zip para o Gerenciador de Arquivos da Hostinger (extrair na pasta do subdomínio).
 """
 
 import argparse
 import json
 import shutil
+import zipfile
 from collections import Counter
 from html import escape
 from pathlib import Path
@@ -188,7 +190,9 @@ LAYOUT_HEAD = """<!doctype html>
 <title>{title} · {brand}</title>
 <meta name="description" content="Site fictício de imobiliária corporativa para demonstrar o widget da Laris (ImobiQ).">
 <meta name="robots" content="noindex">
+<link rel="icon" href="favicon.ico" sizes="48x48">
 <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;700;900&family=Open+Sans:wght@400;600;700&display=swap">
@@ -688,6 +692,9 @@ def build(widget: str) -> None:
     (DIST / "assets" / "site.js").write_text(SITE_JS, encoding="utf-8")
     (DIST / "assets" / "logo.svg").write_text(LOGO_SVG, encoding="utf-8")
     shutil.copy(ROOT.parent / "web" / "public" / "laris-avatar.svg", DIST / "assets" / "laris-avatar.svg")
+    # favicons gerados do logo: .ico na raiz (todo navegador pede /favicon.ico) e ícone do iPhone (180 px)
+    for icon in ("favicon.ico", "apple-touch-icon.png"):
+        shutil.copy(ROOT / "icons" / icon, DIST / icon)
     footer = footer_html(props)
     (DIST / "index.html").write_text(home(props, widget, footer), encoding="utf-8")
     (DIST / "imoveis.html").write_text(listing(props, widget, footer), encoding="utf-8")
@@ -696,10 +703,24 @@ def build(widget: str) -> None:
     print(f"Site gerado em {DIST} ({len(props)} imóveis) · widget: {widget}")
 
 
+def make_zip() -> Path:
+    r"""Pacote para upload. Caminhos com "/" (padrão do formato zip): o Compress-Archive do Windows PowerShell 5.1
+    grava "assets\style.css", e servidores Linux extraem isso como um arquivo com barra no nome, sem a pasta."""
+    out = ROOT / "imobiliaria-exemplo.zip"
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        for f in sorted(DIST.rglob("*")):
+            if f.is_file():
+                z.write(f, f.relative_to(DIST).as_posix())
+    return out
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--widget", default="http://localhost:3001/widget.js", help="URL do widget.js da ImobiQ")
     parser.add_argument("--telegram", default=TELEGRAM, help="username do bot da Laris no Telegram ('' esconde)")
+    parser.add_argument("--zip", action="store_true", help="gera também imobiliaria-exemplo.zip para upload")
     args = parser.parse_args()
     TELEGRAM = args.telegram
     build(args.widget)
+    if args.zip:
+        print(f"Pacote para upload: {make_zip()}")

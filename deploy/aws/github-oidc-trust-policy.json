@@ -10,7 +10,7 @@
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:rodrigoaraujorosa/fiap-ia-devs-8iadt-fase5-hackaton:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub": "repo:rodrigoaraujorosa@7645207/fiap-ia-devs-8iadt-fase5-hackaton@1384460240:ref:refs/heads/main"
         }
       }
     }

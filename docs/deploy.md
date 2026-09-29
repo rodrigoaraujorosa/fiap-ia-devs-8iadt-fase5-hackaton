@@ -52,7 +52,7 @@ Tudo em **us-east-1 (N. Virginia)**: confira a região no canto superior direito
 - `imobiq-api`
 - `imobiq-web`
 
-(Padrões: *Mutable*, criptografia AES-256.)
+Use exatamente esses nomes, **sem prefixo/namespace** (ex.: `hacka/imobiq-api` não funciona): o pipeline e a policy da role usam esses nomes, e repositórios do ECR não podem ser renomeados. Padrões: *Mutable*, criptografia AES-256. Vale ligar *Scan on push* e uma *lifecycle policy* que mantém as 10 imagens mais recentes.
 
 ### 2. Provedor OIDC do GitHub
 **IAM → Identity providers → Add provider**
@@ -64,6 +64,7 @@ Tudo em **us-east-1 (N. Virginia)**: confira a região no canto superior direito
 ### 3. Role do GitHub Actions
 **IAM → Roles → Create role**
 1. Trusted entity type: **Custom trust policy** → cole o conteúdo de [`deploy/aws/github-oidc-trust-policy.json`](../deploy/aws/github-oidc-trust-policy.json) → *Next*.
+   O `sub` usa o formato **immutable subject** do GitHub, com os IDs numéricos do dono e do repositório (`repo:rodrigoaraujorosa@7645207/fiap-ia-devs-8iadt-fase5-hackaton@1384460240:ref:refs/heads/main`): mesmo que alguém recrie um repositório com o mesmo nome, a role não aceita. Para conferir o prefixo de outro repositório: `gh api repos/<dono>/<repo>/actions/oidc/customization/sub` (campo `sub_claim_prefix`). Com o `sub` errado, o deploy falha com *Not authorized to perform sts:AssumeRoleWithWebIdentity*.
 2. Não marque nenhuma política → *Next* → Role name: **`imobiq-github-deploy`** → *Create role*.
 3. Abra a role → **Add permissions → Create inline policy** → aba **JSON** → cole [`deploy/aws/github-deploy-policy.json`](../deploy/aws/github-deploy-policy.json) → *Next* → nome **`imobiq-deploy`** → *Create policy*.
 4. Copie o **ARN** da role (ex.: `arn:aws:iam::528704558835:role/imobiq-github-deploy`).
@@ -130,9 +131,12 @@ Com `TELEGRAM_MODE=webhook` no `.env` de produção, a API registra o webhook so
 
 ### 12. Site fictício (Hostinger)
 ```bash
-python site-exemplo/build.py --widget https://imobiq.arrtsoftware.com.br/widget.js
+python site-exemplo/build.py --widget https://imobiq.arrtsoftware.com.br/widget.js --zip
 ```
-Envie o conteúdo de `site-exemplo/dist/` pelo **Gerenciador de Arquivos** do hPanel para o subdomínio `imobiliaria-exemplo.arrtsoftware.com.br`.
+1. **hPanel → Sites → arrtsoftware.com.br → Domínios → Subdomínios:** crie `imobiliaria-exemplo` com a pasta `public_html/imobiliaria-exemplo`; confira o SSL em **Segurança → SSL**.
+2. **Gerenciador de Arquivos:** envie `site-exemplo/imobiliaria-exemplo.zip` para essa pasta, **Extrair** e apague o zip. Deve aparecer a pasta `assets/` e o `index.html` na raiz.
+
+Use o zip do `--zip`: um zip feito pelo "Compactar" do PowerShell 5.1 grava `assets\style.css`, e o servidor extrai como arquivos soltos com barra no nome (o site aparece sem estilo).
 
 ---
 

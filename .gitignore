@@ -29,3 +29,4 @@ Thumbs.db
 
 # site fictício gerado (python site-exemplo/build.py)
 site-exemplo/dist/
+site-exemplo/*.zip
