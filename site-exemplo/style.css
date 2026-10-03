@@ -65,7 +65,15 @@ button { font: inherit; cursor: pointer; }
 .link-btn { background: none; border: 0; padding: 0; color: var(--navy-2); font-weight: 700; text-decoration: underline; }
 
 /* hero com skyline desenhado em CSS/SVG (sem fotos) */
-.hero { position: relative; overflow: hidden; color: #fff; background: linear-gradient(160deg, var(--navy) 0%, var(--navy-deep) 70%); padding: 64px 0 88px; }
+.hero {
+  position: relative; overflow: hidden; color: #fff; padding: 64px 0 88px;
+  /* fundo: brilho dourado no canto, malha de planta arquitetônica e o degradê azul-marinho */
+  background:
+    radial-gradient(ellipse 60% 70% at 88% 0%, rgba(201, 164, 92, .22), transparent 70%),
+    linear-gradient(rgba(201, 164, 92, .10) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, rgba(201, 164, 92, .10) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(160deg, var(--navy) 0%, var(--navy-deep) 70%);
+}
 .skyline {
   position: absolute; inset: auto 0 0 0; height: 200px; opacity: .12; pointer-events: none;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 220' preserveAspectRatio='none'%3E%3Cpath fill='%23c5cad6' d='M0 220V150h40v-30h30v50h25V90h45v130h20V60h50v160h15v-90h35v90h20V30h55v190h20V110h40v110h25V70h35v150h20V120h45v100h15V40h60v180h20V100h30v120h20V80h45v140h25V130h40v90h20V50h50v170h20V110h35v110h20V70h40v150h25V140h40v80h20V90h45v130z'/%3E%3C/svg%3E") bottom / 100% 100% no-repeat;
