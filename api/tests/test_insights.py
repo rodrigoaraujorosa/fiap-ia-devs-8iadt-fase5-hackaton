@@ -78,9 +78,9 @@ def test_insights_from_the_database(usage, client, langfuse):
     # lead da demo com visita agendada: só conta nos indicadores porque tem turno com a IA registrado
     served = usage.scalars(select(Appointment.lead_id)).first()
     visits = usage.scalar(
-        select(func.count()).select_from(Appointment).where(
-            Appointment.lead_id == served, Appointment.created_at >= now - timedelta(days=7)
-        )
+        select(func.count())
+        .select_from(Appointment)
+        .where(Appointment.lead_id == served, Appointment.created_at >= now - timedelta(days=7))
     )
     usage.add_all([
         UsageEvent(kind="llm", name="compra_aluguel.llm", model=SONNET, cost_usd=1.0, latency_ms=2500,
