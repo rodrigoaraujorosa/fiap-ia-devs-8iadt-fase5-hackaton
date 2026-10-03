@@ -121,14 +121,14 @@ function Dashboard({ data }: { data: Insights }) {
         <StatTile
           label="Custo por conversa"
           value={perUnit(t.cost_per_conversation)}
-          hint={`${t.conversations} conversas no período`}
+          hint={`${t.conversations} conversas atendidas pela IA`}
         />
         <StatTile
           label="Custo por visita agendada"
           value={perUnit(t.cost_per_appointment)}
           hint={
             t.cost_per_appointment === null
-              ? "nenhuma visita no período"
+              ? "nenhuma visita de lead atendido pela IA"
               : `${brl(t.cost_per_appointment, rate)} · ${t.appointments} visitas`
           }
         />

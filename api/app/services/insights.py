@@ -2,7 +2,8 @@
 
 Tudo vem do banco do app: cada chamada ao Claude, ferramenta, turno e suspeita de injection é registrada em
 usage_events (app/services/usage.py), com o custo calculado pela tabela de preços (app/core/pricing.py); os
-números de negócio (conversas, visitas agendadas, leads qualificados) vêm das tabelas do CRM. O Langfuse fica
+números de negócio (conversas, visitas agendadas, leads qualificados) vêm das tabelas do CRM, só dos leads
+atendidos pela IA. O Langfuse fica
 para o detalhe de cada chamada: o painel só monta os links para ele (a API de métricas de lá tem cota diária).
 """
 
@@ -16,8 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core import pricing
 from app.core.config import get_settings
-from app.models import Appointment, Lead, Message, UsageEvent
-from app.models.enums import MessageRole
+from app.models import Appointment, Lead, UsageEvent
 from app.services import exchange
 
 PERIODS = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30)}
@@ -65,16 +65,28 @@ def links() -> dict:
 
 
 def _business(db: Session, since: datetime) -> dict:
-    conversations = db.scalar(
-        select(func.count(distinct(Message.lead_id))).where(
-            Message.role == MessageRole.USER, Message.created_at >= since
-        )
+    """Números de negócio só dos leads atendidos pela IA (com turno registrado em usage_events).
+
+    Os custos são divididos por eles; leads sem atendimento registrado (dados de demonstração, conversas com a
+    IA pausada) ficam de fora, para não baratear artificialmente o custo por conversa e por visita.
+    """
+    E = UsageEvent
+    turn = (E.kind == "trace", E.name == "turno", E.lead_id.is_not(None))
+    served = select(E.lead_id).where(*turn)  # em qualquer data: a visita pode sair dias depois da conversa
+    conversations = db.scalar(select(func.count(distinct(E.lead_id))).where(*turn, E.created_at >= since))
+    appointments = db.scalar(
+        select(func.count())
+        .select_from(Appointment)
+        .where(Appointment.created_at >= since, Appointment.lead_id.in_(served))
     )
-    appointments = db.scalar(select(func.count()).select_from(Appointment).where(Appointment.created_at >= since))
     qualified = db.scalar(
         select(func.count())
         .select_from(Lead)
-        .where(Lead.last_message_at >= since, Lead.status.in_(("qualificado", "agendado", "encaminhado")))
+        .where(
+            Lead.last_message_at >= since,
+            Lead.status.in_(("qualificado", "agendado", "encaminhado")),
+            Lead.id.in_(served),
+        )
     )
     return {"conversations": conversations or 0, "appointments": appointments or 0, "qualified": qualified or 0}
 

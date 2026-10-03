@@ -4,11 +4,11 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from app.core import observability, pricing
 from app.core.config import get_settings
-from app.models import AppSetting, UsageEvent
+from app.models import Appointment, AppSetting, UsageEvent
 from app.services import exchange, insights
 
 SONNET, HAIKU = "claude-sonnet-5", "claude-haiku-4-5"
@@ -75,13 +75,20 @@ def test_calls_tools_and_flows_are_recorded(usage):
 
 def test_insights_from_the_database(usage, client, langfuse):
     now = datetime.now(UTC)
+    # lead da demo com visita agendada: só conta nos indicadores porque tem turno com a IA registrado
+    served = usage.scalars(select(Appointment.lead_id)).first()
+    visits = usage.scalar(
+        select(func.count()).select_from(Appointment).where(
+            Appointment.lead_id == served, Appointment.created_at >= now - timedelta(days=7)
+        )
+    )
     usage.add_all([
         UsageEvent(kind="llm", name="compra_aluguel.llm", model=SONNET, cost_usd=1.0, latency_ms=2500,
                    input_tokens=1000, cache_read_tokens=3000, output_tokens=500),
         UsageEvent(kind="llm", name="extrair_perfil", model=HAIKU, cost_usd=0.5, latency_ms=3000),
         UsageEvent(kind="llm", name="extrair_perfil", model=HAIKU, cost_usd=9.0, created_at=now - timedelta(days=10)),
-        UsageEvent(kind="trace", name="turno", latency_ms=7000),
-        UsageEvent(kind="trace", name="turno", latency_ms=9000),
+        UsageEvent(kind="trace", name="turno", latency_ms=7000, lead_id=served),
+        UsageEvent(kind="trace", name="turno", latency_ms=9000, lead_id=served),
         UsageEvent(kind="trace", name="follow_up", latency_ms=1000),
         UsageEvent(kind="tool", name="buscar_imoveis"),
         UsageEvent(kind="guardrail", name="suspeita_injecao"),
@@ -91,7 +98,10 @@ def test_insights_from_the_database(usage, client, langfuse):
     data = client.get("/observability?period=7d").json()
     assert data["enabled"] is True and data["since"] is not None
     assert data["totals"]["cost"] == 1.5 and data["totals"]["llm_calls"] == 2 and data["totals"]["turns"] == 2
-    assert data["totals"]["cost_per_conversation"] == round(1.5 / data["totals"]["conversations"], 4)
+    # os outros leads da demo (sem atendimento registrado) não entram: 1 conversa, não 8
+    assert data["totals"]["conversations"] == 1 and data["totals"]["cost_per_conversation"] == 1.5
+    assert data["totals"]["appointments"] == visits
+    assert data["totals"]["cost_per_appointment"] == (round(1.5 / visits, 4) if visits else None)
     assert data["cache"] == {"hit_rate": 0.75, "savings": 0.0054}  # 3000 de 4000 tokens; 3000 × US$ 1,80/milhão
     assert data["latency"]["p50_ms"] == 8000
     assert [a["name"] for a in data["by_agent"]] == ["compra_aluguel.llm", "extrair_perfil"]
@@ -109,6 +119,7 @@ def test_panel_works_without_langfuse(usage, client, monkeypatch):
     monkeypatch.setattr(get_settings(), "langfuse_public_key", None)
     data = client.get("/observability").json()
     assert data["enabled"] is True and data["totals"]["cost"] == 0 and data["since"] is None
+    assert data["totals"]["conversations"] == 0 and data["totals"]["appointments"] == 0  # demo não conta
     assert client.get("/observability/links").json() == {"enabled": False, "project_url": None, "session_url": None}
 
 
