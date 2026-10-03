@@ -4,6 +4,7 @@ import {
   Bot,
   Check,
   DatabaseZap,
+  DollarSign,
   ExternalLink,
   FlaskConical,
   Mail,
@@ -28,6 +29,8 @@ import {
   type DemoResetResult,
   type EmailConfig,
   type EmailConfigOut,
+  type ExchangeConfig,
+  type ExchangeConfigOut,
   type FollowupConfig,
   type Metrics,
   type TelegramConfig,
@@ -742,6 +745,129 @@ function AISettings() {
   );
 }
 
+function ExchangeSettings() {
+  const [saved, setSaved] = useState<ExchangeConfigOut | null>(null);
+  const [rate, setRate] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    apiGet<ExchangeConfigOut>("/config/exchange")
+      .then((config) => {
+        setSaved(config);
+        setRate(String(config.rate));
+      })
+      .catch(() => setFailed(true));
+  }, []);
+
+  async function persist(next: ExchangeConfig, message: string) {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const result = await apiPut<ExchangeConfigOut>("/config/exchange", next);
+      setSaved(result);
+      setRate(String(result.rate));
+      setFeedback({ tone: "ok", text: message });
+    } catch {
+      setFeedback({ tone: "error", text: "Não foi possível salvar." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!saved) {
+    return (
+      <Card title="Cotação do dólar">
+        {failed ? (
+          <p className="text-sm text-danger">Não consegui carregar a configuração. A API está rodando?</p>
+        ) : (
+          <div className="h-28 animate-pulse rounded-lg bg-surface-2" />
+        )}
+      </Card>
+    );
+  }
+
+  const brl = (value: number) =>
+    `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+  const parsed = Number(rate.replace(",", "."));
+  const rateValid = Number.isFinite(parsed) && parsed >= 1 && parsed <= 20;
+  const rateDirty = rateValid && parsed !== saved.rate;
+  const current = saved.current;
+  return (
+    <Card title="Cotação do dólar">
+      <div className="flex items-start justify-between gap-4 rounded-lg bg-surface-2 p-3">
+        <div>
+          <p className="flex items-center gap-1.5 text-sm font-medium text-ink">
+            <DollarSign className="size-4 text-muted" aria-hidden /> Buscar a cotação do dia no Banco Central
+          </p>
+          <p className="mt-0.5 text-sm text-ink-2">
+            {saved.live ? (
+              <>
+                <span className="font-medium text-good">Ligada.</span> O painel de observabilidade converte os custos de
+                dólar para real pela PTAX de venda, consultada a cada 6 horas.
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-warm">Desligada.</span> O painel usa a cotação fixa abaixo e não
+                consulta o Banco Central.
+              </>
+            )}{" "}
+            Em uso agora: <strong className="tabular font-medium text-ink">{brl(current.rate)}</strong>{" "}
+            {current.source === "ptax" && current.date
+              ? `(PTAX de ${new Date(`${current.date}T12:00:00`).toLocaleDateString("pt-BR")})`
+              : saved.live
+                ? "(cotação fixa: o Banco Central não respondeu)"
+                : "(cotação fixa)"}
+            .
+          </p>
+        </div>
+        <Switch
+          checked={saved.live}
+          label="Buscar a cotação do dia no Banco Central"
+          disabled={busy}
+          onChange={(live) =>
+            persist({ live, rate: saved.rate }, live ? "Busca da cotação ligada." : "Busca desligada: vale a cotação fixa.")
+          }
+        />
+      </div>
+
+      <form
+        className="mt-4 flex flex-wrap items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (rateDirty) persist({ live: saved.live, rate: parsed }, "Cotação fixa atualizada.");
+        }}
+      >
+        <div className="w-48">
+          <Field
+            label="Cotação fixa (R$ por US$)"
+            htmlFor="exchange-rate"
+            hint={saved.live ? "Reserva, se o Banco Central não responder." : "Usada em todas as conversões."}
+          >
+            <input
+              id="exchange-rate"
+              inputMode="decimal"
+              value={rate}
+              onChange={(e) => setRate(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+        </div>
+        {rateDirty && (
+          <button type="submit" disabled={busy} className={`${buttonClass} bg-brand text-white hover:opacity-90`}>
+            {busy ? "Salvando…" : "Salvar"}
+          </button>
+        )}
+      </form>
+      {!rateValid && <FeedbackLine feedback={{ tone: "error", text: "Use um valor entre 1 e 20, como 5,40." }} />}
+      <div className="mt-2">
+        <FeedbackLine feedback={feedback} />
+      </div>
+    </Card>
+  );
+}
+
 export function Configuration() {
   return (
     <AdminGate title="Configurações" subtitle="Ajustes que valem na hora, sem reiniciar a API. O .env define só os valores iniciais.">
@@ -750,6 +876,7 @@ export function Configuration() {
       <FollowupSettings />
       <EmailSettings />
       <TelegramSettings />
+      <ExchangeSettings />
       <DemoReset />
     </AdminGate>
   );

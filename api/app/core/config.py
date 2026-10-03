@@ -80,7 +80,9 @@ class Settings(BaseSettings):
     timezone: str = "America/Sao_Paulo"
     slot_days_ahead: int = 10
 
-    # Painel de observabilidade: o Langfuse registra custos em dólar; conversão aproximada para real
+    # Painel de observabilidade: custos em dólar, mostrados também em reais pela PTAX do Banco Central
+    # (API pública); USD_BRL é a cotação de reserva, usada se a consulta falhar ou com USD_BRL_LIVE=false
+    usd_brl_live: bool = True
     usd_brl: float = 5.40
 
     # Observabilidade (Langfuse) — vazio = desabilitado

@@ -50,6 +50,11 @@ class AIConfig(BaseModel):
     enabled: bool = Field(description="Liga/desliga o uso das LLMs (conversa, follow-up e resumos)")
 
 
+class ExchangeConfig(BaseModel):
+    live: bool = Field(description="Busca a cotação do dólar do dia no Banco Central (PTAX)")
+    rate: float = Field(ge=1, le=20, description="Cotação fixa (R$ por US$), usada com a busca desligada ou em falha")
+
+
 class RateLimitConfig(BaseModel):
     enabled: bool = Field(description="Liga/desliga os limites de mensagens")
     conversation_hour: int = Field(ge=5, le=500, description="Mensagens de uma conversa por hora")
@@ -154,6 +159,15 @@ def ai_enabled() -> bool:
 
 def save_ai_config(db: Session, config: AIConfig) -> AIConfig:
     return _save(db, "ai", config)
+
+
+def get_exchange_config(db: Session | None = None) -> ExchangeConfig:
+    s = get_settings()
+    return _load(db, "exchange", ExchangeConfig(live=s.usd_brl_live, rate=s.usd_brl))
+
+
+def save_exchange_config(db: Session, config: ExchangeConfig) -> ExchangeConfig:
+    return _save(db, "exchange", config)
 
 
 def get_rate_limit_config(db: Session | None = None) -> RateLimitConfig:

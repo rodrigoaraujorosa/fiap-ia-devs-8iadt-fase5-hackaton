@@ -1,6 +1,6 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.auth import require_admin
@@ -18,8 +18,5 @@ def observability_links():
 
 @router.get("", dependencies=[Depends(require_admin)])
 def observability(period: Literal["24h", "7d", "30d"] = "7d", db: Session = Depends(get_db)):
-    """Visão sintética de custo, uso dos agentes, cache e latência (Langfuse) cruzada com os números de negócio."""
-    try:
-        return insights.insights(db, period)
-    except insights.InsightsError as exc:
-        raise HTTPException(502, str(exc)) from exc
+    """Visão sintética de custo, uso dos agentes, cache e latência (uso registrado pelo app) e números de negócio."""
+    return insights.insights(db, period)

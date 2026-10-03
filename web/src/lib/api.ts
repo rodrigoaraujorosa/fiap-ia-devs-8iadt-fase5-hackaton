@@ -184,12 +184,16 @@ export type WidgetConfig = { restrict: boolean; allowed_domains: string[] };
 
 export type LangfuseLinks = { enabled: boolean; project_url: string | null; session_url: string | null };
 export type InsightsPeriod = "24h" | "7d" | "30d";
-/** Painel de observabilidade: custos em US$ (como o Langfuse registra). */
+/** Painel de observabilidade: uso da IA registrado pelo próprio app, com custos em US$. */
 export type Insights = {
   enabled: boolean;
   period: InsightsPeriod;
   generated_at: string;
+  /** primeiro registro de uso: o painel conta a partir dele */
+  since: string | null;
   usd_brl: number;
+  /** enabled: busca ligada nas configurações; live: veio do Banco Central (date = dia da cotação) */
+  usd_brl_source: { enabled: boolean; live: boolean; date: string | null };
   environment: string;
   totals: {
     cost: number;
@@ -211,6 +215,10 @@ export type Insights = {
   tools: { name: string; calls: number }[];
   injections: number;
   links: LangfuseLinks;
+};
+export type ExchangeConfig = { live: boolean; rate: number };
+export type ExchangeConfigOut = ExchangeConfig & {
+  current: { rate: number; source: "ptax" | "config"; date: string | null };
 };
 export type AuthStatus = { required: boolean; authenticated: boolean };
 

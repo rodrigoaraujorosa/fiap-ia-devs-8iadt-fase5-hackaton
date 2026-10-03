@@ -1,31 +1,26 @@
 """Painel de observabilidade do ImobiQ: visão sintética de custo, uso dos agentes e desempenho.
 
-Custo, tokens e latência vêm da API de métricas do Langfuse (GET /api/public/v2/metrics); os números de negócio
-(conversas, visitas agendadas, leads qualificados) vêm do banco. O resultado fica em cache por 1 minuto, para não
-consultar o Langfuse a cada atualização da tela. Só entra o ambiente atual (ENVIRONMENT): os testes usam "test".
-Para o detalhe de cada chamada, o painel leva ao próprio Langfuse.
+Tudo vem do banco do app: cada chamada ao Claude, ferramenta, turno e suspeita de injection é registrada em
+usage_events (app/services/usage.py), com o custo calculado pela tabela de preços (app/core/pricing.py); os
+números de negócio (conversas, visitas agendadas, leads qualificados) vêm das tabelas do CRM. O Langfuse fica
+para o detalhe de cada chamada: o painel só monta os links para ele (a API de métricas de lá tem cota diária).
 """
 
-import json
-import threading
-import time
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
+from zoneinfo import ZoneInfo
 
 import httpx
 from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
+from app.core import pricing
 from app.core.config import get_settings
-from app.models import Appointment, Lead, Message
+from app.models import Appointment, Lead, Message, UsageEvent
 from app.models.enums import MessageRole
+from app.services import exchange
 
 PERIODS = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30)}
-CACHE_SECONDS = 60
-CACHE_READ_DISCOUNT = 0.9  # na Anthropic, ler do cache custa 10% do preço normal de entrada
-
-_cache: dict[str, tuple[float, dict]] = {}
-_lock = threading.Lock()
 
 
 class InsightsError(Exception):
@@ -69,26 +64,6 @@ def links() -> dict:
     return {"enabled": True, "project_url": project, "session_url": f"{project}/sessions/{{session_id}}"}
 
 
-def _metrics(since: datetime, until: datetime, metrics: list[tuple[str, str]], dims: tuple[str, ...] = (),
-             filters: tuple[tuple[str, str], ...] = (), granularity: str | None = None) -> list[dict]:  # fmt: skip
-    conditions = [("environment", get_settings().environment), *filters]
-    query = {
-        "view": "observations",
-        "metrics": [{"measure": m, "aggregation": a} for m, a in metrics],
-        "dimensions": [{"field": d} for d in dims],
-        "filters": [{"column": c, "operator": "=", "value": v, "type": "string"} for c, v in conditions],
-        "fromTimestamp": since.isoformat(),
-        "toTimestamp": until.isoformat(),
-    }
-    if granularity:
-        query["timeDimension"] = {"granularity": granularity}
-    return _get("/api/public/v2/metrics", {"query": json.dumps(query)}).get("data") or []
-
-
-def _num(value) -> float:
-    return float(value or 0)
-
-
 def _business(db: Session, since: datetime) -> dict:
     conversations = db.scalar(
         select(func.count(distinct(Message.lead_id))).where(
@@ -104,38 +79,65 @@ def _business(db: Session, since: datetime) -> dict:
     return {"conversations": conversations or 0, "appointments": appointments or 0, "qualified": qualified or 0}
 
 
-def _collect(db: Session, period: str) -> dict:
+def _median(q: float = 0.5):
+    return func.percentile_cont(q).within_group(UsageEvent.latency_ms)
+
+
+def _daily(db: Session, since: datetime, until: datetime, hourly: bool) -> list[dict]:
+    """Custo por hora (24h) ou por dia, no fuso do app, com os intervalos sem uso zerados."""
+    E = UsageEvent
+    tz = get_settings().timezone
+    if hourly:
+        bucket = func.date_trunc("hour", E.created_at)
+    else:
+        bucket = func.to_char(func.timezone(tz, E.created_at), "YYYY-MM-DD")
+    rows = db.execute(
+        select(bucket, func.sum(E.cost_usd)).where(E.kind == "llm", E.created_at >= since).group_by(bucket)
+    ).all()
+    if hourly:
+        costs = {b.astimezone(UTC).isoformat(): c for b, c in rows}
+        first = since.replace(minute=0, second=0, microsecond=0)
+        keys = [(first + timedelta(hours=i)).isoformat() for i in range(int((until - first) / timedelta(hours=1)) + 1)]
+    else:
+        costs = dict(rows)
+        zone = ZoneInfo(tz)
+        first, last = since.astimezone(zone).date(), until.astimezone(zone).date()
+        keys = [(first + timedelta(days=i)).isoformat() for i in range((last - first).days + 1)]
+    return [{"date": k, "cost": round(costs.get(k) or 0, 4)} for k in keys]
+
+
+def insights(db: Session, period: str) -> dict:
+    E = UsageEvent
     until = datetime.now(UTC)
     since = until - PERIODS[period]
-    gen = (("type", "GENERATION"),)
+    recent = E.created_at >= since
 
-    by_agent = _metrics(since, until, [("totalCost", "sum"), ("count", "count"), ("latency", "p50")], ("name",), gen)
-    by_model = _metrics(since, until, [("totalCost", "sum"), ("count", "count")], ("providedModelName",), gen)
-    usage = _metrics(since, until, [("usageByType", "sum")], ("providedModelName",), gen)
-    cost_types = _metrics(since, until, [("costByType", "sum")], (), gen)
-    daily = _metrics(since, until, [("totalCost", "sum")], (), gen, "hour" if period == "24h" else "day")
-    turns = _metrics(since, until, [("count", "count"), ("latency", "p50"), ("latency", "p95")], (),
-                     (("name", "turno"),))  # fmt: skip
-    tools = _metrics(since, until, [("count", "count")], ("name",), (("type", "TOOL"),))
-    injections = _metrics(since, until, [("count", "count")], (), (("name", "suspeita_injecao"),))
+    by_agent = db.execute(
+        select(E.name, func.sum(E.cost_usd), func.count(), _median()).where(E.kind == "llm", recent).group_by(E.name)
+    ).all()
+    by_model = db.execute(
+        select(E.model, func.sum(E.cost_usd), func.count(), func.sum(E.input_tokens), func.sum(E.output_tokens),
+               func.sum(E.cache_read_tokens), func.sum(E.cache_creation_tokens))
+        .where(E.kind == "llm", recent)
+        .group_by(E.model)
+    ).all()  # fmt: skip
+    turns, p50, p95 = db.execute(
+        select(func.count(), _median(), _median(0.95)).where(E.kind == "trace", E.name == "turno", recent)
+    ).one()
+    tools = db.execute(
+        select(E.name, func.count()).where(E.kind == "tool", recent).group_by(E.name).order_by(func.count().desc())
+    ).all()
+    injections = db.scalar(select(func.count()).where(E.kind == "guardrail", E.name == "suspeita_injecao", recent))
 
-    total = sum(_num(r.get("sum_totalCost")) for r in by_agent)
-    tokens = {"input": 0.0, "cache_read": 0.0, "cache_creation": 0.0, "output": 0.0}
-    for row in usage:
-        kind = row.get("usageType", "")
-        key = {"input": "input", "output": "output", "cache_read_input_tokens": "cache_read",
-               "cache_creation_input_tokens": "cache_creation"}.get(kind)  # fmt: skip
-        if key:
-            tokens[key] += _num(row.get("sum_usageByType"))
+    total = sum(row[1] for row in by_model)
+    tokens = {
+        "input": sum(r[3] for r in by_model),
+        "cache_read": sum(r[5] for r in by_model),
+        "cache_creation": sum(r[6] for r in by_model),
+        "output": sum(r[4] for r in by_model),
+    }
     prompt_tokens = tokens["input"] + tokens["cache_read"] + tokens["cache_creation"]
-    cache_read_cost = sum(
-        _num(r.get("sum_costByType")) for r in cost_types if r.get("costType") == "cache_read_input_tokens"
-    )
-    # o que as leituras do cache teriam custado a preço cheio, menos o que custaram
-    cache_savings = cache_read_cost / (1 - CACHE_READ_DISCOUNT) * CACHE_READ_DISCOUNT
-
     business = _business(db, since)
-    turn = turns[0] if turns else {}
 
     def per(n: int) -> float | None:
         return round(total / n, 4) if n else None
@@ -144,65 +146,38 @@ def _collect(db: Session, period: str) -> dict:
         "enabled": True,
         "period": period,
         "generated_at": until.isoformat(),
-        "usd_brl": get_settings().usd_brl,
+        "since": db.scalar(select(func.min(E.created_at))),  # o painel conta a partir do primeiro registro
+        "usd_brl": (quote := exchange.usd_brl(db))["rate"],
+        # enabled: busca ligada nas configurações; live: a cotação veio mesmo do Banco Central
+        "usd_brl_source": {"enabled": quote["live"], "live": quote["source"] == "ptax", "date": quote["date"]},
         "environment": get_settings().environment,
         "totals": {
             "cost": round(total, 4),
-            "llm_calls": int(sum(_num(r.get("count_count")) for r in by_agent)),
-            "turns": int(_num(turn.get("count_count"))),
+            "llm_calls": sum(r[2] for r in by_model),
+            "turns": turns,
             **business,
             "cost_per_conversation": per(business["conversations"]),
             "cost_per_appointment": per(business["appointments"]),
             "cost_per_qualified": per(business["qualified"]),
         },
-        "latency": {"p50_ms": round(_num(turn.get("p50_latency"))), "p95_ms": round(_num(turn.get("p95_latency")))},
+        "latency": {"p50_ms": round(p50 or 0), "p95_ms": round(p95 or 0)},
         "cache": {
             "hit_rate": round(tokens["cache_read"] / prompt_tokens, 3) if prompt_tokens else 0,
-            "savings": round(cache_savings, 4),
+            "savings": round(sum(pricing.cache_savings(r[0], r[5]) for r in by_model), 4),
         },
-        "tokens": {k: int(v) for k, v in tokens.items()},
+        "tokens": tokens,
         "by_agent": sorted(
-            (
-                {
-                    "name": r["name"],
-                    "cost": round(_num(r.get("sum_totalCost")), 4),
-                    "calls": int(_num(r.get("count_count"))),
-                    "p50_ms": round(_num(r.get("p50_latency"))),
-                }  # fmt: skip
-                for r in by_agent
-                if r.get("name")
-            ),
+            ({"name": n, "cost": round(c, 4), "calls": k, "p50_ms": round(ms or 0)} for n, c, k, ms in by_agent),
             key=lambda r: r["cost"],
             reverse=True,
         ),
-        "by_model": [
-            {
-                "model": r["providedModelName"],
-                "cost": round(_num(r.get("sum_totalCost")), 4),
-                "calls": int(_num(r.get("count_count"))),
-            }  # fmt: skip
-            for r in by_model
-            if r.get("providedModelName")
-        ],
-        "daily": [{"date": r["time_dimension"], "cost": round(_num(r.get("sum_totalCost")), 4)} for r in daily],
-        "tools": sorted(
-            ({"name": r["name"], "calls": int(_num(r.get("count_count")))} for r in tools if r.get("name")),
-            key=lambda r: r["calls"],
+        "by_model": sorted(
+            ({"model": r[0], "cost": round(r[1], 4), "calls": r[2]} for r in by_model if r[0]),
+            key=lambda r: r["cost"],
             reverse=True,
         ),
-        "injections": int(sum(_num(r.get("count_count")) for r in injections)),
+        "daily": _daily(db, since, until, hourly=period == "24h"),
+        "tools": [{"name": n, "calls": calls} for n, calls in tools],
+        "injections": injections or 0,
         "links": links(),
     }
-
-
-def insights(db: Session, period: str) -> dict:
-    if not enabled():
-        return {"enabled": False, "links": links()}
-    with _lock:
-        cached = _cache.get(period)
-        if cached and time.monotonic() - cached[0] < CACHE_SECONDS:
-            return cached[1]
-    data = _collect(db, period)
-    with _lock:
-        _cache[period] = (time.monotonic(), data)
-    return data

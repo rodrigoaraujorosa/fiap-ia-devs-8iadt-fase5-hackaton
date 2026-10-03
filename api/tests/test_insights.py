@@ -1,45 +1,27 @@
-"""Painel de observabilidade sem rede: respostas do Langfuse simuladas."""
+"""Painel de observabilidade: uso da IA registrado no banco do app, sem rede e sem LLM."""
 
-import json
+import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from sqlalchemy import delete, select
 
+from app.core import observability, pricing
 from app.core.config import get_settings
-from app.services import insights
+from app.models import AppSetting, UsageEvent
+from app.services import exchange, insights
+
+SONNET, HAIKU = "claude-sonnet-5", "claude-haiku-4-5"
 
 
-def fake_langfuse(path: str, params: dict | None = None) -> dict:
-    if path == "/api/public/projects":
-        return {"data": [{"id": "proj1"}]}
-    q = json.loads(params["query"])
-    assert {"column": "environment", "operator": "=", "value": "test", "type": "string"} in q["filters"]
-    dims = [d["field"] for d in q["dimensions"]]
-    measures = [m["measure"] for m in q["metrics"]]
-    names = {f["value"] for f in q["filters"] if f["column"] == "name"}
-    if "timeDimension" in q:
-        return {"data": [{"time_dimension": "2026-09-27", "sum_totalCost": 1.5}]}
-    if "turno" in names:
-        return {"data": [{"count_count": "40", "p50_latency": 7000, "p95_latency": 12000}]}
-    if "suspeita_injecao" in names:
-        return {"data": [{"count_count": "2"}]}
-    if dims == ["name"] and "latency" in measures:
-        return {
-            "data": [
-                {"name": "compra_aluguel.llm", "sum_totalCost": 1.0, "count_count": "30", "p50_latency": 2500},
-                {"name": "extrair_perfil", "sum_totalCost": 0.5, "count_count": "40", "p50_latency": 3000},
-            ]
-        }
-    if dims == ["name"]:
-        return {"data": [{"name": "buscar_imoveis", "count_count": "12"}]}
-    if "usageByType" in measures:
-        return {"data": [{"providedModelName": "claude-sonnet-5", "usageType": "input", "sum_usageByType": "1000"},
-                         {"providedModelName": "claude-sonnet-5", "usageType": "cache_read_input_tokens",
-                          "sum_usageByType": "3000"}]}  # fmt: skip
-    if "costByType" in measures:
-        return {"data": [{"costType": "cache_read_input_tokens", "sum_costByType": 0.1}]}
-    if dims == ["providedModelName"]:
-        return {"data": [{"providedModelName": "claude-sonnet-5", "sum_totalCost": 1.0, "count_count": "30"}]}
-    raise AssertionError(q)
+@pytest.fixture
+def usage(db):
+    """Tabela de uso vazia antes e depois (outros testes também registram ferramentas e fluxos)."""
+    db.execute(delete(UsageEvent))
+    db.commit()
+    yield db
+    db.execute(delete(UsageEvent))
+    db.commit()
 
 
 @pytest.fixture
@@ -47,41 +29,142 @@ def langfuse(monkeypatch):
     s = get_settings()
     monkeypatch.setattr(s, "langfuse_public_key", "pk-test")
     monkeypatch.setattr(s, "langfuse_secret_key", "sk-test")
-    monkeypatch.setattr(insights, "_get", fake_langfuse)
+    monkeypatch.setattr(insights, "_get", lambda path, params=None: {"data": [{"id": "proj1"}]})
     insights._project_id.cache_clear()
-    insights._cache.clear()
     yield
     insights._project_id.cache_clear()
-    insights._cache.clear()
 
 
-def test_insights_combine_langfuse_and_business_numbers(db, client, langfuse):
+def test_cost_follows_the_price_table():
+    usage = {"input": 1_000_000, "output": 100_000, "cache_read_input_tokens": 1_000_000,
+             "cache_creation_input_tokens": 1_000_000}  # fmt: skip
+    # Sonnet 5: 2 (entrada) + 1 (saída) + 0,2 (leitura do cache) + 2,5 (gravação no cache)
+    assert pricing.cost(SONNET, usage) == pytest.approx(5.7)
+    assert pricing.cost("claude-haiku-4-5-20251001", {"input": 1_000_000, "output": 1_000_000}) == pytest.approx(6.0)
+    assert pricing.cost("modelo-desconhecido", usage) == 0
+    assert pricing.cache_savings(SONNET, 1_000_000) == pytest.approx(1.8)  # 2,00 a preço cheio, 0,20 pago
+
+
+def test_calls_tools_and_flows_are_recorded(usage):
+    lead_id = str(uuid.uuid4())
+    with observability.trace("turno", session_id=lead_id):
+        with observability.observation("compra_aluguel.llm", as_type="generation", model=SONNET) as gen:
+            gen.update(output="oi", usage_details={"input": 1000, "output": 200, "cache_read_input_tokens": 3000,
+                                                   "cache_creation_input_tokens": 0})  # fmt: skip
+        with observability.observation("buscar_imoveis", as_type="tool"):
+            pass
+        with observability.observation("supervisor", as_type="chain"):  # nó do grafo: não entra
+            pass
+        with pytest.raises(RuntimeError):  # chamada que falhou não tem uso: não entra
+            with observability.observation("investimento.llm", as_type="generation", model=SONNET):
+                raise RuntimeError("API fora")
+        observability.flag_trace("suspeita_injecao", comment="regex")
+
+    rows = usage.scalars(select(UsageEvent).order_by(UsageEvent.id)).all()
+    assert [(r.kind, r.name) for r in rows] == [
+        ("llm", "compra_aluguel.llm"),
+        ("tool", "buscar_imoveis"),
+        ("guardrail", "suspeita_injecao"),
+        ("trace", "turno"),
+    ]
+    call = rows[0]
+    assert (call.model, call.input_tokens, call.output_tokens, call.cache_read_tokens) == (SONNET, 1000, 200, 3000)
+    assert call.cost_usd == pytest.approx((1000 * 2 + 3000 * 0.2 + 200 * 10) / 1e6)
+    assert {str(r.lead_id) for r in rows} == {lead_id}
+
+
+def test_insights_from_the_database(usage, client, langfuse):
+    now = datetime.now(UTC)
+    usage.add_all([
+        UsageEvent(kind="llm", name="compra_aluguel.llm", model=SONNET, cost_usd=1.0, latency_ms=2500,
+                   input_tokens=1000, cache_read_tokens=3000, output_tokens=500),
+        UsageEvent(kind="llm", name="extrair_perfil", model=HAIKU, cost_usd=0.5, latency_ms=3000),
+        UsageEvent(kind="llm", name="extrair_perfil", model=HAIKU, cost_usd=9.0, created_at=now - timedelta(days=10)),
+        UsageEvent(kind="trace", name="turno", latency_ms=7000),
+        UsageEvent(kind="trace", name="turno", latency_ms=9000),
+        UsageEvent(kind="trace", name="follow_up", latency_ms=1000),
+        UsageEvent(kind="tool", name="buscar_imoveis"),
+        UsageEvent(kind="guardrail", name="suspeita_injecao"),
+    ])  # fmt: skip
+    usage.commit()
+
     data = client.get("/observability?period=7d").json()
-    assert data["totals"]["cost"] == 1.5 and data["totals"]["llm_calls"] == 70 and data["totals"]["turns"] == 40
+    assert data["enabled"] is True and data["since"] is not None
+    assert data["totals"]["cost"] == 1.5 and data["totals"]["llm_calls"] == 2 and data["totals"]["turns"] == 2
     assert data["totals"]["cost_per_conversation"] == round(1.5 / data["totals"]["conversations"], 4)
-    assert data["cache"] == {"hit_rate": 0.75, "savings": 0.9}  # 3000 de 4000 tokens; 0,1 a preço cheio = 1,0
-    assert data["latency"] == {"p50_ms": 7000, "p95_ms": 12000}
+    assert data["cache"] == {"hit_rate": 0.75, "savings": 0.0054}  # 3000 de 4000 tokens; 3000 × US$ 1,80/milhão
+    assert data["latency"]["p50_ms"] == 8000
     assert [a["name"] for a in data["by_agent"]] == ["compra_aluguel.llm", "extrair_perfil"]
-    assert data["tools"] == [{"name": "buscar_imoveis", "calls": 12}] and data["injections"] == 2
+    assert data["by_model"][0] == {"model": SONNET, "cost": 1.0, "calls": 1}
+    assert data["tools"] == [{"name": "buscar_imoveis", "calls": 1}] and data["injections"] == 1
+    assert len(data["daily"]) in (8, 9) and data["daily"][-1]["cost"] == 1.5 and data["daily"][0]["cost"] == 0
     assert data["links"]["session_url"] == "https://cloud.langfuse.com/project/proj1/sessions/{session_id}"
 
+    assert client.get("/observability?period=30d").json()["totals"]["cost"] == 10.5
+    hourly = client.get("/observability?period=24h").json()["daily"]
+    assert len(hourly) == 25 and sum(h["cost"] for h in hourly) == 1.5
 
-def test_insights_without_langfuse(client, monkeypatch):
+
+def test_panel_works_without_langfuse(usage, client, monkeypatch):
     monkeypatch.setattr(get_settings(), "langfuse_public_key", None)
-    assert client.get("/observability").json()["enabled"] is False
+    data = client.get("/observability").json()
+    assert data["enabled"] is True and data["totals"]["cost"] == 0 and data["since"] is None
     assert client.get("/observability/links").json() == {"enabled": False, "project_url": None, "session_url": None}
+
+
+def test_dollar_rate_comes_from_the_central_bank(usage, client, monkeypatch):
+    calls = []
+
+    def ptax() -> dict:
+        calls.append(1)
+        return {"rate": 5.2238, "source": "ptax", "date": "2026-10-02"}
+
+    def down() -> dict:
+        raise exchange.httpx.ConnectError("fora do ar")
+
+    monkeypatch.setattr(get_settings(), "usd_brl_live", True)
+    monkeypatch.setattr(exchange, "_fetch", ptax)
+    exchange.reset()
+    data = client.get("/observability").json()
+    assert data["usd_brl"] == 5.2238
+    assert data["usd_brl_source"] == {"enabled": True, "live": True, "date": "2026-10-02"}
+    client.get("/observability")
+    assert len(calls) == 1  # a cotação fica em memória: uma consulta só
+
+    monkeypatch.setattr(exchange, "_fetch", down)
+    exchange._next_try = 0.0  # hora de consultar de novo, e o Banco Central não responde: vale a última cotação
+    assert client.get("/observability").json()["usd_brl"] == 5.2238
+    exchange.reset()  # sem nenhuma cotação obtida: a fixa da configuração
+    data = client.get("/observability").json()
+    assert data["usd_brl"] == get_settings().usd_brl
+    assert data["usd_brl_source"] == {"enabled": True, "live": False, "date": None}
+    exchange.reset()
+
+
+def test_dollar_lookup_can_be_turned_off_in_settings(usage, client, monkeypatch):
+    def never() -> dict:
+        raise AssertionError("busca desligada: não pode consultar o Banco Central")
+
+    monkeypatch.setattr(get_settings(), "usd_brl_live", True)
+    monkeypatch.setattr(exchange, "_fetch", never)
+    exchange.reset()
+    try:
+        saved = client.put("/config/exchange", json={"live": False, "rate": 5.1}).json()
+        assert saved["live"] is False and saved["current"] == {"rate": 5.1, "source": "config", "date": None}
+        data = client.get("/observability").json()
+        assert data["usd_brl"] == 5.1 and data["usd_brl_source"] == {"enabled": False, "live": False, "date": None}
+        assert client.put("/config/exchange", json={"live": False, "rate": 0}).status_code == 422
+
+        monkeypatch.setattr(exchange, "_fetch", lambda: {"rate": 5.2238, "source": "ptax", "date": "2026-10-02"})
+        on = client.put("/config/exchange", json={"live": True, "rate": 5.1}).json()  # religada: busca na hora
+        assert on["current"]["rate"] == 5.2238 and client.get("/config/exchange").json()["rate"] == 5.1
+    finally:
+        usage.execute(delete(AppSetting).where(AppSetting.key == "exchange"))
+        usage.commit()
+        exchange.reset()
 
 
 def test_insights_require_admin(client, langfuse, monkeypatch):
     monkeypatch.setattr(get_settings(), "admin_password", "senha")
     assert client.get("/observability").status_code == 401
     assert client.get("/observability/links").status_code == 200  # só links, sem dados
-
-
-def test_langfuse_failure_becomes_502(client, langfuse, monkeypatch):
-    def down(path, params=None):
-        raise insights.InsightsError("Langfuse indisponível: ConnectError")
-
-    monkeypatch.setattr(insights, "_get", down)
-    response = client.get("/observability?period=24h")
-    assert response.status_code == 502 and "indisponível" in response.json()["detail"]

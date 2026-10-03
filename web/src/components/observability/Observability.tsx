@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { BarList } from "@/components/BarList";
 import { Card, EmptyState, StatTile } from "@/components/ui";
-import { ApiError, apiGet, type Insights, type InsightsPeriod } from "@/lib/api";
+import { apiGet, type Insights, type InsightsPeriod } from "@/lib/api";
 
 const PERIODS: { key: InsightsPeriod; label: string }[] = [
   { key: "24h", label: "24 horas" },
@@ -14,7 +14,7 @@ const PERIODS: { key: InsightsPeriod; label: string }[] = [
   { key: "30d", label: "30 dias" },
 ];
 
-// nomes das observações no Langfuse → nome no painel
+// nomes dos agentes no registro de uso → nome no painel
 const AGENT_LABEL: Record<string, string> = {
   extrair_perfil: "Supervisor (Haiku)",
   "compra_aluguel.llm": "Locação e compra",
@@ -204,9 +204,16 @@ function Dashboard({ data }: { data: Insights }) {
       </div>
 
       <p className="text-xs text-muted">
-        Fonte: Langfuse (ambiente <code>{data.environment}</code>) e banco do ImobiQ · atualizado{" "}
-        {new Date(data.generated_at).toLocaleTimeString("pt-BR")} (os dados do Langfuse podem ter alguns minutos de
-        atraso) · custos em dólar, convertidos a R$ {rate.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}.
+        Fonte: banco do ImobiQ, que registra cada chamada ao Claude (ambiente <code>{data.environment}</code>)
+        {data.since ? ` · contando desde ${new Date(data.since).toLocaleDateString("pt-BR")}` : ""} · atualizado{" "}
+        {new Date(data.generated_at).toLocaleTimeString("pt-BR")} · custos calculados pela tabela de preços da
+        Anthropic, em dólar, convertidos a R$ {rate.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}{" "}
+        {data.usd_brl_source.live && data.usd_brl_source.date
+          ? `(PTAX de venda do Banco Central de ${new Date(`${data.usd_brl_source.date}T12:00:00`).toLocaleDateString("pt-BR")})`
+          : data.usd_brl_source.enabled
+            ? "(cotação fixa das configurações: o Banco Central não respondeu)"
+            : "(cotação fixa definida nas configurações)"}
+        .
       </p>
     </div>
   );
@@ -223,8 +230,8 @@ function Content() {
     setError(null);
     try {
       setData(await apiGet<Insights>(`/observability?period=${p}`));
-    } catch (err) {
-      setError(err instanceof ApiError && err.status === 502 ? err.message : "Não consegui carregar os dados.");
+    } catch {
+      setError("Não consegui carregar os dados.");
     } finally {
       setLoading(false);
     }
@@ -276,15 +283,7 @@ function Content() {
       </div>
       {error && <p className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-danger">{error}</p>}
       {!data && !error && <div className="h-64 animate-pulse rounded-xl bg-surface-2" />}
-      {data && !data.enabled && (
-        <Card title="Langfuse não configurado">
-          <p className="text-sm text-ink-2">
-            Coloque <code>LANGFUSE_PUBLIC_KEY</code> e <code>LANGFUSE_SECRET_KEY</code> no <code>.env</code> e reinicie a API:
-            cada conversa passa a gerar traces com custo, tokens e latência, e este painel resume tudo.
-          </p>
-        </Card>
-      )}
-      {data?.enabled && <Dashboard data={data} />}
+      {data && <Dashboard data={data} />}
     </div>
   );
 }

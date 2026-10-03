@@ -7,22 +7,25 @@ from sqlalchemy.orm import Session
 from app.core.auth import require_admin
 from app.db.session import get_db
 from app.jobs.followup import run_followups
-from app.services import telegram
+from app.services import exchange, telegram
 from app.services.app_config import (
     AIConfig,
     EmailConfig,
+    ExchangeConfig,
     FollowupConfig,
     RateLimitConfig,
     TelegramConfig,
     WidgetConfig,
     get_ai_config,
     get_email_config,
+    get_exchange_config,
     get_followup_config,
     get_rate_limit_config,
     get_telegram_config,
     get_widget_config,
     save_ai_config,
     save_email_config,
+    save_exchange_config,
     save_followup_config,
     save_rate_limit_config,
     save_telegram_config,
@@ -54,6 +57,29 @@ class TelegramConfigOut(TelegramConfig):
     username: str | None
     name: str | None
     link: str | None
+
+
+class ExchangeQuote(BaseModel):
+    rate: float
+    source: str  # ptax | config
+    date: str | None
+
+
+class ExchangeConfigOut(ExchangeConfig):
+    current: ExchangeQuote  # cotação em uso agora no painel de observabilidade
+
+
+@router.get("/config/exchange", response_model=ExchangeConfigOut)
+def read_exchange_config(db: Session = Depends(get_db)):
+    """Cotação do dólar do painel de observabilidade: busca no Banco Central ligada/desligada e cotação fixa."""
+    return {**get_exchange_config(db).model_dump(), "current": exchange.usd_brl(db)}
+
+
+@router.put("/config/exchange", response_model=ExchangeConfigOut)
+def update_exchange_config(config: ExchangeConfig, db: Session = Depends(get_db)):
+    """Vale na hora. Desligada, o painel usa a cotação fixa e não consulta o Banco Central."""
+    saved = save_exchange_config(db, config)
+    return {**saved.model_dump(), "current": exchange.usd_brl(db)}
 
 
 @router.get("/config/ai", response_model=AIConfig)
