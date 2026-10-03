@@ -130,13 +130,23 @@ Depois: abra https://imobiq.arrtsoftware.com.br/configuration, entre com o `ADMI
 Com `TELEGRAM_MODE=webhook` no `.env` de produção, a API registra o webhook sozinha ao subir. **No `.env` local, apague o `TELEGRAM_BOT_TOKEN`** (ou use outro bot): a API local em polling apagaria o webhook de produção.
 
 ### 12. Site fictício (Hostinger)
+1. **hPanel → Sites → arrtsoftware.com.br → Domínios → Subdomínios:** crie `imobiliaria-exemplo` com a pasta `public_html/imobiliaria-exemplo`; confira o SSL em **Segurança → SSL**.
+2. **hPanel → Arquivos → Contas FTP:** crie uma conta com o diretório `public_html/imobiliaria-exemplo` (ela só enxerga essa pasta).
+3. **Repositório → Settings → Secrets and variables → Actions → aba Secrets → New repository secret:**
+
+| Nome | Valor |
+|---|---|
+| `FTP_SERVER` | host FTP mostrado no hPanel (sem `ftp://`) |
+| `FTP_USERNAME` | usuário da conta FTP |
+| `FTP_PASSWORD` | senha da conta FTP |
+
+A partir daí o workflow [`site.yml`](../.github/workflows/site.yml) gera e publica o site por FTPS a cada mudança em `site-exemplo/`, em `data/properties.json` ou no avatar da Laris (ou em **Actions → Site fictício → Run workflow**). Ele envia só os arquivos que mudaram.
+
+**Sem o Actions (upload manual):**
 ```bash
 python site-exemplo/build.py --widget https://imobiq.arrtsoftware.com.br/widget.js --zip
 ```
-1. **hPanel → Sites → arrtsoftware.com.br → Domínios → Subdomínios:** crie `imobiliaria-exemplo` com a pasta `public_html/imobiliaria-exemplo`; confira o SSL em **Segurança → SSL**.
-2. **Gerenciador de Arquivos:** envie `site-exemplo/imobiliaria-exemplo.zip` para essa pasta, **Extrair** e apague o zip. Deve aparecer a pasta `assets/` e o `index.html` na raiz.
-
-Use o zip do `--zip`: um zip feito pelo "Compactar" do PowerShell 5.1 grava `assets\style.css`, e o servidor extrai como arquivos soltos com barra no nome (o site aparece sem estilo).
+No **Gerenciador de Arquivos**, envie `site-exemplo/imobiliaria-exemplo.zip` para a pasta do subdomínio, **Extrair** e apague o zip. Deve aparecer a pasta `assets/` e o `index.html` na raiz. Use o zip do `--zip`: um zip feito pelo "Compactar" do PowerShell 5.1 grava `assets\style.css`, e o servidor extrai como arquivos soltos com barra no nome (o site aparece sem estilo).
 
 ---
 
@@ -147,7 +157,8 @@ Pelo Session Manager (`sudo -i`):
 ```bash
 /opt/imobiq/dc ps                 # containers
 /opt/imobiq/dc logs -f api        # logs da API
-/opt/imobiq/dc restart api        # reinicia a API (ex.: depois de mudar o .env)
+/opt/imobiq/dc up -d api          # recria a API com o .env novo (restart não relê o .env)
+/opt/imobiq/dc restart api        # só reinicia a API, com as mesmas variáveis
 /opt/imobiq/dc exec db pg_dump -U sdr sdr > backup.sql   # backup do banco
 ```
 

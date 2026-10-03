@@ -1,0 +1,61 @@
+# Site fictício (Imobiliária Exemplo): gera o site estático e publica na Hostinger por FTPS.
+# Roda só quando muda o que entra no site: o gerador, a base de imóveis ou o avatar da Laris.
+# Configuração (Settings -> Secrets and variables -> Actions -> Secrets): FTP_SERVER, FTP_USERNAME e FTP_PASSWORD
+# de uma conta FTP presa à pasta do subdomínio (public_html/imobiliaria-exemplo). Sem os secrets, só gera o site.
+name: Site fictício
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - site-exemplo/**
+      - data/properties.json
+      - web/public/laris-avatar.svg
+      - .github/workflows/site.yml
+  workflow_dispatch:
+
+concurrency:
+  group: site-exemplo
+  cancel-in-progress: false  # nunca interrompe um envio no meio
+
+permissions:
+  contents: read
+
+env:
+  SITE_URL: https://imobiliaria-exemplo.arrtsoftware.com.br
+
+jobs:
+  publish:
+    name: Hostinger (FTPS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gera o site
+        run: python3 site-exemplo/build.py --widget "https://${{ vars.APP_DOMAIN }}/widget.js"
+      - id: ftp
+        name: Confere os secrets do FTP
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+        run: |
+          if [ -n "$FTP_SERVER" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Secrets do FTP não cadastrados: o site foi gerado, mas não publicado."
+          fi
+      - name: Publica
+        if: steps.ftp.outputs.configured == 'true'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: site-exemplo/dist/
+          server-dir: ./  # a conta FTP já abre na pasta do subdomínio
+      - name: Teste de fumaça (${{ env.SITE_URL }})
+        if: steps.ftp.outputs.configured == 'true'
+        run: |
+          for path in "" imoveis.html assets/style.css assets/site.js favicon.ico; do
+            curl -fsS -o /dev/null "$SITE_URL/$path" || { echo "Falhou: $SITE_URL/$path"; exit 1; }
+          done
+          echo "No ar: $SITE_URL"
