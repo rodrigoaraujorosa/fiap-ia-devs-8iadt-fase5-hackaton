@@ -191,18 +191,6 @@ RUN_LLM_TESTS=1 uv run pytest tests/test_agent_scenarios.py   # cenários do enu
 uv run ruff check .
 ```
 
-## 🗺️ Roadmap
-
-- [x] **Dia 1** — Fundação: Docker Compose, schema (leads, mensagens, imóveis, corretores, agenda), base simulada, RAG híbrido, esqueleto web
-- [x] **Dia 2** — Grafo multiagente (supervisor, compra/aluguel, investidor), extrator de perfil, memória, `/chat` com streaming
-- [x] **Dia 3** — Agente de agendamento, resumo para corretor, follow-up automático, observabilidade (Langfuse)
-- [x] **Dia 4** — Chat do lead (streaming + painel da IA em tempo real), dashboard do corretor e detalhe do lead
-- [x] **Diferenciais já entregues** — e-mail do resumo ao corretor com convite (.ics), widget para sites de imobiliárias, site fictício, bot do Telegram
-- [x] **Segurança** — senha de administrador, liga/desliga das LLMs, limite de mensagens, domínios do widget, proteção contra prompt injection e dados pessoais mascarados no Langfuse
-- [x] **Deploy contínuo** — no ar em https://imobiq.arrtsoftware.com.br: GitHub Actions (CI + imagens no ECR + deploy na EC2 via SSM, OIDC sem chaves)
-- [ ] **Próximos** — voz no chat
-- [ ] **Dia 6** — Documentação, demo e pitch
-
 ## 📄 Licença
 
 Copyright © 2026 Rodrigo de Araujo Rosa. Distribuído sob a **[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)** (texto completo em [LICENSE](LICENSE)).

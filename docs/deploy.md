@@ -164,3 +164,4 @@ Pelo Session Manager (`sudo -i`):
 
 - **Rollback:** Actions → Deploy → execução anterior → *Re-run all jobs* (republica aquele commit).
 - **Economizar:** EC2 → Instance state → *Stop* quando não estiver usando; *Start* para voltar (o Elastic IP, os dados e o certificado continuam).
+- **Push com a instância parada:** o CI roda e as imagens vão para o ECR, mas a atualização da EC2 é pulada com o aviso "Deploy pulado" (o workflow não falha). Depois de ligar a instância, rode **Actions → Deploy → Run workflow** para publicar a versão atual.

@@ -2,6 +2,7 @@
 # Sem chaves da AWS no GitHub: o Actions assume uma role por OIDC (credenciais temporárias, só para esta execução).
 # Configuração (Settings -> Secrets and variables -> Actions -> Variables): AWS_ROLE_ARN, AWS_REGION,
 # EC2_INSTANCE_ID e APP_DOMAIN. Enquanto AWS_ROLE_ARN não existir, só o CI roda.
+# Com a instância parada, as imagens vão para o ECR e a atualização da EC2 é pulada com um aviso (sem falhar).
 name: Deploy
 
 on:
@@ -66,12 +67,14 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      - name: Atualiza a EC2
+      - id: ec2
+        name: Atualiza a EC2
         env:
           INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
           IMAGE_TAG: ${{ github.sha }}
         run: bash deploy/ssm-deploy.sh
       - name: Teste de fumaça (https://${{ vars.APP_DOMAIN }})
+        if: steps.ec2.outputs.skipped != 'true'
         env:
           APP_DOMAIN: ${{ vars.APP_DOMAIN }}
         run: |

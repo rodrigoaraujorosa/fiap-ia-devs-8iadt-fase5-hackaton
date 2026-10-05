@@ -2,6 +2,7 @@
 # Deploy na EC2 pelo SSM Run Command (sem SSH, sem porta 22): chamado pelo GitHub Actions com credenciais
 # temporárias (OIDC). Grava o compose e o Caddyfile em /opt/imobiq, baixa as imagens da versão do commit,
 # sobe os containers, espera a API ficar saudável e roda o seed (idempotente: só insere o que falta).
+# Com a instância parada (fora dos testes e da demo), não falha: avisa e marca skipped=true para o workflow.
 set -euo pipefail
 : "${INSTANCE_ID:?defina INSTANCE_ID}" "${IMAGE_TAG:?defina IMAGE_TAG}" "${AWS_REGION:?defina AWS_REGION}"
 
@@ -37,12 +38,24 @@ EOF
 )
 
 PARAMS=$(jq -n --arg script "$REMOTE" '{commands: [$script], executionTimeout: ["1800"]}')
-COMMAND_ID=$(aws ssm send-command \
+if ! COMMAND_ID=$(aws ssm send-command \
   --instance-ids "$INSTANCE_ID" \
   --document-name AWS-RunShellScript \
   --comment "imobiq ${IMAGE_TAG:0:7}" \
   --parameters "$PARAMS" \
-  --query Command.CommandId --output text)
+  --query Command.CommandId --output text 2>send-command.err); then
+  cat send-command.err >&2
+  # o SSM recusa com InvalidInstanceId quando a instância não está em execução (ou sem o agente no ar)
+  if grep -q InvalidInstanceId send-command.err; then
+    MSG="Instância $INSTANCE_ID parada: as imagens ${IMAGE_TAG:0:7} estão no ECR, mas a EC2 não foi atualizada."
+    echo "::warning title=Deploy pulado::$MSG Ligue a instância e rode Actions -> Deploy -> Run workflow."
+    echo "skipped=true" >> "${GITHUB_OUTPUT:-/dev/null}"
+    printf '### ⏸️ Deploy pulado\n\n%s\n\nLigue a instância e rode **Actions → Deploy → Run workflow**.\n' "$MSG" \
+      >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+    exit 0
+  fi
+  exit 1
+fi
 echo "Comando SSM: $COMMAND_ID"
 
 STATUS=Pending
