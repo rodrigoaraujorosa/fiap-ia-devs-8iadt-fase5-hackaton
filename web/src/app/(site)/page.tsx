@@ -43,18 +43,19 @@ export default async function Home() {
 
   return (
     <div className="space-y-10 py-4">
-      <section className="max-w-3xl space-y-4">
+      <section className="max-w-5xl space-y-4">
         <LogoMark size={56} />
         <p className="text-sm font-medium text-brand">
           Hackathon FIAP · Pós Tech IA para Devs · Turma 8IADT · Grupo 65{" "}
           <span className="font-normal text-ink-2">(Rodrigo Rosa, Elias Silva, Fabia Jesus e Danilo Pereira)</span>
         </p>
         <h1 className="text-4xl font-semibold leading-tight text-ink">
-          Nenhum lead sem resposta. Todo corretor com o cliente certo.
+          Nenhum lead sem resposta.
+          <br className="hidden sm:block" /> Todo corretor com o cliente certo.
         </h1>
-        <div className="flex items-start gap-4">
-          <LarisAvatar size={72} />
-          <p className="text-lg text-ink-2">
+        <div className="flex items-center gap-4">
+          <LarisAvatar size={84} />
+          <p className="text-balance text-lg text-ink-2">
             A <strong className="font-bold text-brand">Laris</strong> é uma SDR com IA generativa para imóveis
             comerciais: atende empresas e investidores na hora, qualifica, mostra conjuntos, andares corporativos,
             prédios e galpões, agenda visitas e envia ao corretor, por e-mail, um resumo pronto com o convite da visita.
