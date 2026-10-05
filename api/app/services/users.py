@@ -73,8 +73,10 @@ def user_for_link(db: Session, token: str) -> User | None:
     return user
 
 
-def set_password(db: Session, user: User, password: str) -> User:
+def set_password(db: Session, user: User, password: str, accept_terms: bool = False) -> User:
     user.password_hash = passwords.hash_password(password)
+    if accept_terms and user.terms_accepted_at is None:
+        user.terms_accepted_at = datetime.now(UTC)
     return _touch(db, user)
 
 

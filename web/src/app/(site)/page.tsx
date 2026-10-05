@@ -1,4 +1,4 @@
-import { BellRing, CalendarCheck, FileText, MessagesSquare, SearchCheck, Target } from "lucide-react";
+import { BellRing, CalendarCheck, ExternalLink, FileText, MessagesSquare, SearchCheck, Target } from "lucide-react";
 import Link from "next/link";
 
 import { LogoMark } from "@/components/Brand";
@@ -9,6 +9,15 @@ async function apiOnline() {
     return (await apiGet<{ status: string }>("/health")).status === "ok";
   } catch {
     return false;
+  }
+}
+
+/** Site fictício da imobiliária, com o widget da Laris (o endereço vem da API: muda entre local e produção). */
+async function siteUrl() {
+  try {
+    return (await apiGet<{ site_url: string }>("/info")).site_url;
+  } catch {
+    return null;
   }
 }
 
@@ -30,7 +39,7 @@ const FEATURES = [
 ];
 
 export default async function Home() {
-  const online = await apiOnline();
+  const [online, site] = await Promise.all([apiOnline(), siteUrl()]);
 
   return (
     <div className="space-y-10 py-4">
@@ -52,7 +61,23 @@ export default async function Home() {
           <Link href="/dashboard" className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink">
             Abrir dashboard do corretor
           </Link>
+          {site && (
+            <a
+              href={site}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-4 py-2 text-sm font-medium text-ink"
+            >
+              Ver o site da imobiliária de exemplo <ExternalLink aria-hidden size={14} />
+            </a>
+          )}
         </div>
+        {site && (
+          <p className="text-sm text-ink-2">
+            O site de exemplo mostra a Laris embutida no site de uma imobiliária fictícia: a bolha do chat aparece em
+            todas as páginas e ela já sabe qual imóvel o visitante está vendo.
+          </p>
+        )}
         <p className="inline-flex items-center gap-2 text-xs text-ink-2">
           <span className={`size-2 rounded-full ${online ? "bg-good" : "bg-danger"}`} aria-hidden />
           API {online ? "online" : "offline"}

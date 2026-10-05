@@ -11,7 +11,7 @@ import { Card } from "@/components/ui";
 import { ApiError, apiGet, apiPost } from "@/lib/api";
 
 const MIN_LENGTH = 8;
-type LinkInfo = { email: string; name: string | null; has_password: boolean };
+type LinkInfo = { email: string; name: string | null; has_password: boolean; needs_terms: boolean };
 
 /** Tela do link de convite ou de "esqueci minha senha": a pessoa cria a senha e já entra. */
 export function SetPassword() {
@@ -22,6 +22,7 @@ export function SetPassword() {
   const [invalid, setInvalid] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [accepted, setAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,11 +49,12 @@ export function SetPassword() {
     setBusy(true);
     setError(null);
     try {
-      await apiPost("/auth/password", { token, password });
+      await apiPost("/auth/password", { token, password, accept_terms: accepted });
       await refresh();
       router.replace("/dashboard");
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 400 ? err.message : "Não foi possível salvar a senha agora.");
+      const known = err instanceof ApiError && (err.status === 400 || err.status === 422);
+      setError(known ? err.message : "Não foi possível salvar a senha agora.");
       setBusy(false);
     }
   }
@@ -112,9 +114,31 @@ export function SetPassword() {
             className={inputClass}
           />
         </Field>
+        {info.needs_terms && (
+          <label className="flex items-start gap-2 text-sm text-ink-2">
+            <input
+              type="checkbox"
+              required
+              checked={accepted}
+              onChange={(e) => setAccepted(e.target.checked)}
+              className="mt-0.5 size-4 shrink-0 accent-brand"
+            />
+            <span>
+              Li e aceito os{" "}
+              <Link href="/termos" target="_blank" className="font-medium text-brand underline-offset-2 hover:underline">
+                Termos de Uso
+              </Link>{" "}
+              e a{" "}
+              <Link href="/privacidade" target="_blank" className="font-medium text-brand underline-offset-2 hover:underline">
+                Política de Privacidade
+              </Link>
+              .
+            </span>
+          </label>
+        )}
         <button
           type="submit"
-          disabled={busy || password.length < MIN_LENGTH || confirm !== password}
+          disabled={busy || password.length < MIN_LENGTH || confirm !== password || (info.needs_terms && !accepted)}
           className={`${buttonClass} bg-brand text-white hover:opacity-90`}
         >
           <KeyRound className="size-4" aria-hidden /> {busy ? "Salvando…" : "Salvar e entrar"}

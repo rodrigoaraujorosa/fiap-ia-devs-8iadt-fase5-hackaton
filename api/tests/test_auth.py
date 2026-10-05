@@ -3,6 +3,7 @@
 import base64
 import json
 import time
+from datetime import UTC, datetime
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -277,10 +278,15 @@ def test_invited_user_creates_a_password_and_logs_in(browser, secured):
         "email": "ana@teste.dev",
         "name": None,
         "has_password": False,
+        "needs_terms": True,
     }
-    assert browser.post("/auth/password", json={"token": token, "password": "curta"}).status_code == 422
-    assert browser.post("/auth/password", json={"token": token + "x", "password": "senha-boa-123"}).status_code == 400
-    assert browser.post("/auth/password", json={"token": token, "password": "senha-boa-123"}).status_code == 200
+    no_terms = browser.post("/auth/password", json={"token": token, "password": "senha-boa-123"})
+    assert no_terms.status_code == 422 and "Termos" in no_terms.json()["detail"]  # sem o aceite, a conta não é criada
+    new = {"token": token, "password": "senha-boa-123", "accept_terms": True}
+    assert browser.post("/auth/password", json={**new, "password": "curta"}).status_code == 422
+    assert browser.post("/auth/password", json={**new, "token": token + "x"}).status_code == 400
+    assert browser.post("/auth/password", json=new).status_code == 200
+    assert secured.scalar(select(User.terms_accepted_at).where(User.email == "ana@teste.dev")) is not None
     assert browser.get("/auth/me").json()["user"]["role"] == "gestor"  # definir a senha já abre a sessão
     assert browser.get(f"/auth/password?token={token}").status_code == 400  # o link vale uma vez só
     assert browser.post("/auth/password", json={"token": token, "password": "outra-senha-1"}).status_code == 400
@@ -305,7 +311,10 @@ def test_invited_user_creates_a_password_and_logs_in(browser, secured):
 
 def test_forgot_password_sends_a_single_use_link(browser, secured):
     user = User(
-        email="bia@teste.dev", role="visualizador", password_hash=users.passwords.hash_password("senha-antiga-1")
+        email="bia@teste.dev",
+        role="visualizador",
+        password_hash=users.passwords.hash_password("senha-antiga-1"),
+        terms_accepted_at=datetime.now(UTC),
     )
     secured.add(user)
     secured.commit()
@@ -317,6 +326,7 @@ def test_forgot_password_sends_a_single_use_link(browser, secured):
     body = OUTBOX[0].get_body(("plain",)).get_content()
     token = link_token(next(line for line in body.splitlines() if line.startswith(APP)))
 
+    assert browser.get(f"/auth/password?token={token}").json()["needs_terms"] is False  # já aceitou ao criar a conta
     assert browser.post("/auth/password", json={"token": token, "password": "senha-nova-456"}).status_code == 200
     browser.post("/auth/logout")
     assert browser.post("/auth/login", json={"email": "bia@teste.dev", "password": "senha-antiga-1"}).status_code == 401

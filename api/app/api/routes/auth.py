@@ -35,6 +35,7 @@ class ForgotIn(BaseModel):
 class NewPasswordIn(BaseModel):
     token: str
     password: str = Field(min_length=passwords.MIN_LENGTH, max_length=passwords.MAX_LENGTH)
+    accept_terms: bool = False  # obrigatório na criação da conta (quem ainda não aceitou os termos)
 
 
 class Me(BaseModel):
@@ -121,7 +122,12 @@ def password_link_info(token: str, db: Session = Depends(get_db)):
     user = users.user_for_link(db, token)
     if user is None:
         raise HTTPException(400, "Este link expirou ou já foi usado. Peça um novo.")
-    return {"email": user.email, "name": user.name, "has_password": user.has_password}
+    return {
+        "email": user.email,
+        "name": user.name,
+        "has_password": user.has_password,
+        "needs_terms": user.terms_accepted_at is None,  # a tela mostra a caixa de aceite
+    }
 
 
 @router.post("/password")
@@ -130,7 +136,9 @@ def define_password(payload: NewPasswordIn, response: Response, db: Session = De
     user = users.user_for_link(db, payload.token)
     if user is None:
         raise HTTPException(400, "Este link expirou ou já foi usado. Peça um novo.")
-    users.set_password(db, user, payload.password)
+    if user.terms_accepted_at is None and not payload.accept_terms:
+        raise HTTPException(422, "Para criar a conta, aceite os Termos de Uso e a Política de Privacidade.")
+    users.set_password(db, user, payload.password, payload.accept_terms)
     token, _ = auth.issue_token(str(user.id))
     auth.set_session_cookie(response, token)
     return {"ok": True}

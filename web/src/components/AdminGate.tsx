@@ -1,6 +1,7 @@
 "use client";
 
 import { KeyRound, Lock, ShieldX } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
@@ -196,6 +197,17 @@ function LoginCard() {
             </a>
           </>
         )}
+        <p className="text-xs text-muted">
+          Ao entrar, você concorda com os{" "}
+          <Link href="/termos" className="underline underline-offset-2 hover:text-ink-2">
+            Termos de Uso
+          </Link>{" "}
+          e a{" "}
+          <Link href="/privacidade" className="underline underline-offset-2 hover:text-ink-2">
+            Política de Privacidade
+          </Link>
+          .
+        </p>
         {session.password && (
           <details className="border-t border-line pt-3">
             <summary className="cursor-pointer text-xs text-muted hover:text-ink-2">Acesso de emergência do administrador</summary>

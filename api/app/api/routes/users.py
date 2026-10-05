@@ -28,6 +28,7 @@ class UserOut(BaseModel):
     broker_id: int | None
     active: bool
     has_password: bool
+    terms_accepted_at: datetime | None
     created_at: datetime
     last_login_at: datetime | None
 

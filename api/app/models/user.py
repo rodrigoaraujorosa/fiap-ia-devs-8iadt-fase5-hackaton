@@ -26,6 +26,8 @@ class User(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # quando a pessoa marcou que leu e aceita os Termos de Uso e a Política de Privacidade (ao criar a senha)
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     broker: Mapped["Broker | None"] = relationship()  # noqa: F821
 

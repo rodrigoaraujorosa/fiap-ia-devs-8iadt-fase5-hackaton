@@ -270,6 +270,7 @@ export type UserRow = {
   broker_id: number | null;
   active: boolean;
   has_password: boolean;
+  terms_accepted_at: string | null;
   created_at: string;
   last_login_at: string | null;
 };
