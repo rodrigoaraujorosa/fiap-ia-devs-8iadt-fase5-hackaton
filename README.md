@@ -39,6 +39,64 @@ POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · 
 | 🔐 Acesso | E-mail e senha (hash scrypt) ou Google (OAuth 2.0 / OpenID Connect) · papéis · sessão em cookie `HttpOnly` |
 | ☁️ Infra | Docker Compose · AWS (EC2, ECR, SSM) · Caddy (HTTPS) · GitHub Actions |
 
+## 🏗️ Arquitetura da solução
+
+```mermaid
+flowchart LR
+    subgraph Canais [Canais do lead]
+        V1([Chat do ImobiQ])
+        V2([Widget no site<br/>da imobiliária])
+        V3([Bot do Telegram])
+    end
+    EQ([Equipe da imobiliária<br/>dashboard · observabilidade · configurações])
+
+    subgraph AWS [AWS · EC2 com Docker Compose]
+        C[Caddy<br/>HTTPS automático]
+        W[Web<br/>Next.js]
+        A[API<br/>FastAPI + LangGraph]
+        J[[Jobs<br/>follow-up]]
+        DB[(PostgreSQL + pgvector<br/>CRM · memória dos agentes<br/>imóveis e embeddings · uso da IA)]
+        C --> W
+        C -->|/api| A
+        A --> DB
+        J --> DB
+    end
+
+    V1 & V2 --> C
+    EQ --> C
+    V3 <-->|webhook| TG[Telegram Bot API]
+    TG <--> A
+
+    A -->|conversa, extração, resumo| LLM[Anthropic<br/>Claude Sonnet 5 · Haiku 4.5]
+    J --> LLM
+    A -.->|traces, dados pessoais mascarados| LF[Langfuse]
+    A -->|login opcional| GO[Google<br/>OAuth 2.0 / OpenID Connect]
+    A -->|resumo ao corretor, convites| SMTP[SMTP<br/>Hostinger]
+    A -->|cotação do dólar| BC[Banco Central<br/>PTAX]
+
+    GH[GitHub Actions<br/>CI + deploy] -->|imagens| ECR[(Amazon ECR)]
+    GH -->|SSM Run Command| AWS
+    ECR -.-> AWS
+    GH -->|FTPS| HS[Hostinger<br/>site fictício]
+    HS -.->|carrega o widget.js| V2
+```
+
+O lead conversa pelo chat do ImobiQ, pelo widget embutido no site da imobiliária ou pelo Telegram; os três canais caem na mesma API, no mesmo grafo de agentes e na mesma memória. A equipe da imobiliária usa o mesmo app, com login. Tudo o que é estado (CRM, conversas, memória dos agentes, base de imóveis com embeddings, registro de uso da IA, usuários) fica num único PostgreSQL.
+
+### 🔁 Componentes externos e alternativas
+
+Cada serviço externo fica atrás de um módulo próprio da API, então pode ser trocado sem mexer nos agentes. A tabela mostra o que a POC usa e duas alternativas que se encaixam no mesmo ponto (não implementadas).
+
+| Papel na solução | Usado na POC | Alternativas | O que muda na troca |
+|---|---|---|---|
+| 💬 Canal de mensageria | **Telegram** (Bot API, gratuito, sem aprovação) | WhatsApp Business (Cloud API da Meta) · Instagram Direct / Messenger | Um novo adaptador de canal como o `services/telegram.py` (receber o webhook, enviar a resposta); o lead já tem o campo de canal. O WhatsApp exige conta comercial verificada e modelos de mensagem aprovados para o follow-up. |
+| 🧠 Modelos de linguagem | **Claude** (API da Anthropic) | Claude no Amazon Bedrock · Claude no Google Vertex AI | Só o cliente em `agents/llm.py`; útil para faturar pela nuvem que a empresa já usa. |
+| 📈 Observabilidade de IA | **Langfuse** (traces) + painel próprio no Postgres | LangSmith · Arize Phoenix (código aberto, pode rodar na própria infraestrutura) | O módulo `core/observability.py`; o painel de custo do ImobiQ não depende da ferramenta escolhida. |
+| 🔐 Login | **E-mail e senha** + **Google** | Microsoft Entra ID (contas corporativas Microsoft 365) · Keycloak ou Auth0 (provedor de identidade central) | Um novo fluxo OpenID Connect como o `services/google_oauth.py`; usuários, papéis e sessão continuam os mesmos. |
+| ✉️ E-mail | **SMTP da Hostinger** | Amazon SES · SendGrid | Só as variáveis `SMTP_*` do `.env`: o envio é SMTP padrão. |
+| 🔎 Busca vetorial (RAG) | **pgvector** no próprio Postgres | Qdrant · Amazon OpenSearch | A função de busca em `services/property_search.py`; vale a pena só com uma base muito maior que a de uma imobiliária. |
+| ☁️ Hospedagem | **EC2** com Docker Compose | AWS ECS Fargate + RDS · AWS App Runner + RDS | Os mesmos contêineres; a API não guarda estado, então escala horizontalmente. |
+
 ## 🤖 Como o agente funciona
 
 ```mermaid

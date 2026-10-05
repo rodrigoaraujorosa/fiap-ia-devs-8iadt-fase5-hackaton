@@ -116,7 +116,8 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
 
   // --------------------------------------------------------------- sincronização com a API
   const syncFromServer = useCallback(async (id: string) => {
-    const detail = await apiGet<LeadDetail>(`/leads/${id}`);
+    // rota do próprio visitante: as rotas /leads são do CRM e exigem login
+    const detail = await apiGet<LeadDetail>(`/chat/${id}/state`);
     const last = detail.messages.at(-1)?.id ?? null;
     if (busyRef.current) return;
     setLead(detail);
@@ -163,7 +164,10 @@ export function ChatApp({ embed }: { embed?: EmbedOptions } = {}) {
   useEffect(() => {
     if (restored.current || !leadId) return;
     restored.current = true;
-    syncFromServer(leadId).catch(() => saveLeadId(null));
+    // só esquece a conversa se ela não existe mais; falha de rede ou limite de acesso não pode criar outro lead
+    syncFromServer(leadId).catch((err) => {
+      if (err instanceof ApiError && err.status === 404) saveLeadId(null);
+    });
   }, [leadId, syncFromServer, saveLeadId]);
 
   // no widget, o foco fica dentro do iframe: o Esc precisa ser repassado ao site para fechar o chat

@@ -58,6 +58,10 @@ def test_crm_requires_login(browser):
             assert browser.get(path).status_code == 401, path
         assert browser.post(f"/leads/{lead_id}/summary").status_code == 401
         assert browser.get(f"/chat/{lead_id}/messages").status_code == 200
+        # o chat retoma a conversa por uma rota própria do visitante, sem o que é interno do CRM
+        state = browser.get(f"/chat/{lead_id}/state")
+        assert state.status_code == 200 and state.json()["id"] == lead_id
+        assert state.json()["summary"] is None and state.json()["emails"] == []
         assert browser.get("/auth/me").json() == {"required": True, "google": False, "password": True, "user": None}
     finally:
         with SessionLocal() as session:

@@ -7,9 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.agents.qualification import normalize_phone
+from app.api.routes.leads import lead_detail
 from app.db.session import get_db
 from app.models import Lead, Message
 from app.models.enums import Channel
+from app.schemas.crm import LeadDetail
 from app.schemas.lead import ContactIn, LeadCreate, LeadOut, MessageIn, MessageOut
 from app.services.app_config import get_widget_config
 from app.services.chat import save_contact, stream_turn_sse
@@ -48,6 +50,14 @@ def create_session(request: Request, payload: LeadCreate | None = None, db: Sess
     db.commit()
     db.refresh(lead)
     return lead
+
+
+@router.get("/{lead_id}/state", response_model=LeadDetail)
+def conversation_state(lead_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Estado da conversa para o próprio visitante (quem tem o id da sessão): mensagens, perfil entendido e
+    agendamento. É o que o chat usa para retomar a conversa e receber os follow-ups; as rotas /leads são do CRM
+    e exigem login."""
+    return lead_detail(db, _get_lead(db, lead_id), internal=False)
 
 
 @router.get("/{lead_id}/messages", response_model=list[MessageOut])

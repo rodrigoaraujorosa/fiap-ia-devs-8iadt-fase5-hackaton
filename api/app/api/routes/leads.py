@@ -71,15 +71,20 @@ def list_leads(
     return db.scalars(stmt.order_by(recent.desc(), Lead.created_at.desc()).limit(limit)).all()
 
 
-@router.get("/leads/{lead_id}", response_model=LeadDetail)
-def get_lead(lead_id: uuid.UUID, principal: Principal = Depends(current_principal), db: Session = Depends(get_db)):
-    lead = lead_or_404(db, lead_id, principal)
-    summary = db.scalar(select(Summary).where(Summary.lead_id == lead_id).order_by(Summary.created_at.desc()))
+def lead_detail(db: Session, lead: Lead, internal: bool = True) -> LeadDetail:
+    """Perfil, agendamentos e conversa de um lead. internal=False é a visão do próprio visitante no chat:
+    sem o resumo escrito para o corretor e sem o histórico de e-mails internos."""
+    lead_id = lead.id
+    summary = emails = None
+    if internal:
+        summary = db.scalar(select(Summary).where(Summary.lead_id == lead_id).order_by(Summary.created_at.desc()))
+        emails = db.scalars(
+            select(EmailLog).where(EmailLog.lead_id == lead_id).order_by(EmailLog.created_at.desc())
+        ).all()
     appts = db.scalars(
         select(Appointment).join(Slot).where(Appointment.lead_id == lead_id).order_by(Slot.start_at)
     ).all()
     messages = db.scalars(select(Message).where(Message.lead_id == lead_id).order_by(Message.id)).all()
-    emails = db.scalars(select(EmailLog).where(EmailLog.lead_id == lead_id).order_by(EmailLog.created_at.desc())).all()
     return LeadDetail.model_validate(
         {
             **LeadOut.model_validate(lead).model_dump(),
@@ -88,9 +93,14 @@ def get_lead(lead_id: uuid.UUID, principal: Principal = Depends(current_principa
             "appointments": [appointment_out(a, lead.name) for a in appts],
             "messages": messages,
             "missing": missing_fields(lead),
-            "emails": emails,
+            "emails": emails or [],
         }
     )
+
+
+@router.get("/leads/{lead_id}", response_model=LeadDetail)
+def get_lead(lead_id: uuid.UUID, principal: Principal = Depends(current_principal), db: Session = Depends(get_db)):
+    return lead_detail(db, lead_or_404(db, lead_id, principal))
 
 
 @router.post("/leads/{lead_id}/summary", response_model=SummaryOut)
