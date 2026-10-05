@@ -1,12 +1,13 @@
 "use client";
 
-import { KeyRound, Lock, ShieldX } from "lucide-react";
+import { Info, KeyRound, Lock, ShieldX } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { useSession } from "@/components/Session";
 import { FeedbackLine, Field, buttonClass, inputClass, type Feedback } from "@/components/settings/controls";
+import { LEGAL } from "@/components/Legal";
 import { Card } from "@/components/ui";
 import { API_URL, ApiError, apiPost, ROLE_LABEL, type Role } from "@/lib/api";
 
@@ -182,6 +183,19 @@ function LoginCard() {
         <p className="flex items-center gap-1.5 text-sm text-ink-2">
           <Lock className="size-4 shrink-0 text-muted" aria-hidden /> Área restrita à equipe da imobiliária.
         </p>
+        <div className="flex items-start gap-2 rounded-lg bg-surface-2 p-3 text-xs text-ink-2">
+          <Info className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
+          <p>
+            Esta é uma prova de conceito com acesso por convite.
+            {session.google && " Para entrar com o Google, a sua conta precisa estar pré-cadastrada para os testes."}{" "}
+            {session.google ? "Sem conta Google, você" : "Você"} precisa receber um convite por e-mail para criar a
+            senha. Para pedir acesso, escreva para{" "}
+            <a href={`mailto:${LEGAL.email}`} className="font-medium text-brand underline-offset-2 hover:underline">
+              {LEGAL.email}
+            </a>
+            .
+          </p>
+        </div>
         {authError && <FeedbackLine feedback={{ tone: "error", text: authError }} />}
         <EmailLogin onLogin={refresh} />
         {session.google && (

@@ -1,7 +1,7 @@
 import { BellRing, CalendarCheck, ExternalLink, FileText, MessagesSquare, SearchCheck, Target } from "lucide-react";
 import Link from "next/link";
 
-import { LogoMark } from "@/components/Brand";
+import { LarisAvatar, LogoMark } from "@/components/Brand";
 import { apiGet } from "@/lib/api";
 
 async function apiOnline() {
@@ -45,15 +45,21 @@ export default async function Home() {
     <div className="space-y-10 py-4">
       <section className="max-w-3xl space-y-4">
         <LogoMark size={56} />
-        <p className="text-sm font-medium text-brand">Hackathon FIAP · Pós Tech IA para Devs · Turma 8IADT · Grupo 65</p>
+        <p className="text-sm font-medium text-brand">
+          Hackathon FIAP · Pós Tech IA para Devs · Turma 8IADT · Grupo 65{" "}
+          <span className="font-normal text-ink-2">(Rodrigo Rosa, Elias Silva, Fabia Jesus e Danilo Pereira)</span>
+        </p>
         <h1 className="text-4xl font-semibold leading-tight text-ink">
           Nenhum lead sem resposta. Todo corretor com o cliente certo.
         </h1>
-        <p className="text-lg text-ink-2">
-          A Laris é uma SDR com IA generativa para imóveis comerciais: atende empresas e investidores na hora,
-          qualifica, mostra conjuntos, andares corporativos, prédios e galpões, agenda visitas e envia ao corretor,
-          por e-mail, um resumo pronto com o convite da visita.
-        </p>
+        <div className="flex items-start gap-4">
+          <LarisAvatar size={72} />
+          <p className="text-lg text-ink-2">
+            A <strong className="font-bold text-brand">Laris</strong> é uma SDR com IA generativa para imóveis
+            comerciais: atende empresas e investidores na hora, qualifica, mostra conjuntos, andares corporativos,
+            prédios e galpões, agenda visitas e envia ao corretor, por e-mail, um resumo pronto com o convite da visita.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-3">
           <Link href="/chat" className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
             Conversar como lead

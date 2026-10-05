@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, LogOut, Settings } from "lucide-react";
+import { Activity, LogIn, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 
 import { Logo } from "@/components/Brand";
@@ -49,6 +49,15 @@ export function AppNav() {
           >
             <Settings className="size-4" aria-hidden />
             <span className="hidden md:inline">Configurações</span>
+          </Link>
+        )}
+        {session?.required && !user && (
+          // o dashboard é a porta de entrada: sem sessão, ele mostra a tela de login
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-brand-ink hover:opacity-90"
+          >
+            <LogIn className="size-4" aria-hidden /> Login
           </Link>
         )}
         {session?.required && user && (
