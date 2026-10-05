@@ -21,7 +21,7 @@ POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · 
 
 > 🔑 O chat e o site fictício são públicos. O dashboard, a observabilidade e as configurações pedem login, e o acesso é por convite. A instância da AWS fica ligada só durante os testes e a demonstração.
 
-> 🚧 Documentação completa (arquitetura, explicação da IA, demo e pitch) será finalizada ao longo do desenvolvimento.
+> 📚 Documentação: **[arquitetura](docs/arquitetura.md)** · **[como a IA funciona](docs/ia.md)** · **[deploy](docs/deploy.md)**. 🚧 O relatório técnico, a demo e o pitch serão finalizados ao longo do desenvolvimento.
 
 ---
 
@@ -29,7 +29,7 @@ POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · 
 
 | Camada | Tecnologia |
 |---|---|
-| 🧠 LLMs | Claude Sonnet 5 (conversa) · Claude Haiku 4.5 (roteamento, extração, resumo, follow-up) |
+| 🧠 LLMs | Claude Sonnet 5 (conversa, resumo para o corretor, follow-up) · Claude Haiku 4.5 (supervisor: extração do perfil e roteamento) |
 | 🕸️ Orquestração | LangGraph (supervisor + agentes especialistas, memória com checkpointer Postgres) |
 | ⚙️ Backend | Python 3.12 · FastAPI · SQLAlchemy · Alembic |
 | 🗄️ Dados | PostgreSQL 16 + pgvector |
