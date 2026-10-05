@@ -294,6 +294,7 @@ export function Observability() {
       title="Observabilidade"
       subtitle="Custo com IA, uso dos agentes e desempenho, em resumo. O detalhe de cada chamada fica no Langfuse."
       className="space-y-4"
+      roles={["admin", "gestor", "visualizador"]}
     >
       <Content />
     </AdminGate>

@@ -4,6 +4,7 @@ import { Activity, ArrowLeft, BellRing, ExternalLink, CalendarCheck, Globe, Load
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useState } from "react";
 
+import { useSession } from "@/components/Session";
 import { Card, EmptyState, Markdown, ScoreMeter, StatusBadge, Tag, TemperatureBadge } from "@/components/ui";
 import { apiGet, apiPost, type EmailLog, type LangfuseLinks, type LeadDetail, type LeadSource, type Summary } from "@/lib/api";
 import { AGENT_LABEL, DECISION_LABEL, FIELD_LABEL, INTENT_LABEL, compactBrl, dateTime, relativeTime, spaceLabel } from "@/lib/format";
@@ -84,22 +85,25 @@ function EmailEntry({ entry }: { entry: EmailLog }) {
   );
 }
 
-function EmailStatus({ emails, sending, onSend }: { emails: EmailLog[]; sending: boolean; onSend: () => void }) {
+/** onSend ausente = perfil só de leitura: mostra o histórico, sem o botão de envio. */
+function EmailStatus({ emails, sending, onSend }: { emails: EmailLog[]; sending: boolean; onSend?: () => void }) {
   return (
     <div className="mt-4 border-t border-line pt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-sm font-medium text-ink">
           <Mail aria-hidden size={15} className="text-muted" /> E-mail ao corretor
         </p>
-        <button
-          type="button"
-          onClick={onSend}
-          disabled={sending}
-          className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-2 disabled:opacity-60"
-        >
-          {sending ? <Loader2 aria-hidden size={13} className="animate-spin" /> : <Mail aria-hidden size={13} />}
-          {sending ? "Enviando…" : emails.length ? "Reenviar por e-mail" : "Enviar por e-mail"}
-        </button>
+        {onSend && (
+          <button
+            type="button"
+            onClick={onSend}
+            disabled={sending}
+            className="inline-flex items-center gap-1.5 rounded-md border border-line px-3 py-1.5 text-xs font-medium text-ink hover:bg-surface-2 disabled:opacity-60"
+          >
+            {sending ? <Loader2 aria-hidden size={13} className="animate-spin" /> : <Mail aria-hidden size={13} />}
+            {sending ? "Enviando…" : emails.length ? "Reenviar por e-mail" : "Enviar por e-mail"}
+          </button>
+        )}
       </div>
       {emails.length ? (
         <ul className="mt-2 space-y-2">
@@ -144,6 +148,7 @@ export function LeadDetailView({ id }: { id: string }) {
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
   const [langfuse, setLangfuse] = useState<LangfuseLinks | null>(null);
+  const { canWrite } = useSession();
 
   // cada conversa é uma sessão no Langfuse: link direto para os traces deste lead
   useEffect(() => {
@@ -273,15 +278,17 @@ export function LeadDetailView({ id }: { id: string }) {
           <Card
             title="Resumo para o corretor"
             action={
-              <button
-                type="button"
-                onClick={generateSummary}
-                disabled={generating}
-                className="inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-brand-ink disabled:opacity-60"
-              >
-                {generating ? <Loader2 aria-hidden size={13} className="animate-spin" /> : <Sparkles aria-hidden size={13} />}
-                {lead.summary ? "Atualizar resumo" : "Gerar resumo"}
-              </button>
+              canWrite && (
+                <button
+                  type="button"
+                  onClick={generateSummary}
+                  disabled={generating}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-brand-ink disabled:opacity-60"
+                >
+                  {generating ? <Loader2 aria-hidden size={13} className="animate-spin" /> : <Sparkles aria-hidden size={13} />}
+                  {lead.summary ? "Atualizar resumo" : "Gerar resumo"}
+                </button>
+              )
             }
           >
             {lead.summary ? (
@@ -289,7 +296,7 @@ export function LeadDetailView({ id }: { id: string }) {
             ) : (
               <EmptyState>O resumo é gerado automaticamente ao agendar ou encaminhar, ou sob demanda.</EmptyState>
             )}
-            <EmailStatus emails={lead.emails} sending={sending} onSend={sendEmail} />
+            <EmailStatus emails={lead.emails} sending={sending} onSend={canWrite ? sendEmail : undefined} />
           </Card>
 
           <Card title="Perfil do lead">

@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     email_demo_mode: bool = True  # entrega tudo na caixa de demonstração
     email_demo_recipient: str = "corretor@arrtsoftware.com.br"
     public_app_url: str = "http://localhost:3001"  # links "Abrir no dashboard" nos e-mails
+    public_api_url: str = "http://localhost:8001"  # endereço público da API (volta do login com Google)
+
+    # Login com Google (credencial OAuth "Web application" no Google Cloud). Sem as duas, o botão não aparece.
+    # URI de redirecionamento a cadastrar no Google: <PUBLIC_API_URL>/auth/google/callback
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    admin_emails: str = ""  # e-mails (separados por vírgula) que entram como admin sem convite
+    session_secret: str | None = None  # opcional: reforça a assinatura das sessões; trocar encerra todas
 
     # Telegram (bot criado no @BotFather). Sem token, a integração fica desligada.
     # polling: a API busca as mensagens no Telegram (local, sem URL pública); webhook: o Telegram chama

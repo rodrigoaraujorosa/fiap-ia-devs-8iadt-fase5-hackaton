@@ -124,7 +124,9 @@ Configuração: crie o bot no **@BotFather** e coloque o token em `TELEGRAM_BOT_
 
 ## 🔒 Segurança
 
-- **Área de administração com senha** (`ADMIN_PASSWORD`): configurações e ações de demo exigem login; token assinado de 12 horas, invalidado ao trocar a senha.
+- **Login e papéis:** o dashboard, os leads, a observabilidade e as configurações exigem login; o chat do visitante, o widget e o Telegram continuam públicos. Só entra quem foi convidado por um administrador, com **e-mail e senha** ou, como alternativa, com a **conta Google** do mesmo e-mail. Cada usuário tem um papel: **administrador** (tudo), **gestor** (todos os leads e a observabilidade), **corretor** (só os leads e as visitas dele) ou **visualizador** (só leitura, pensado para a banca). A sessão vai num cookie `HttpOnly` de 12 horas e desativar um usuário corta o acesso na hora.
+- **Senhas:** o convidado cria a própria senha por um link de uso único (72 horas), enviado por e-mail e exibido ao administrador; "esqueci minha senha" manda um link de 1 hora. As senhas ficam só como hash scrypt com sal, as tentativas de login são limitadas por hora e a resposta não revela se um e-mail existe.
+- **Senha de administrador** (`ADMIN_PASSWORD`): acesso de emergência, entra como administrador; trocar a senha encerra todas as sessões.
 - **Liga/desliga das LLMs:** fora das demonstrações, nada chama o Claude; o chat pede nome e telefone num formulário.
 - **Limite de mensagens** (tela de configurações, em tempo real): por conversa, por IP, conversas novas por IP e um **teto diário** que funciona como trava de custo (acima dele, a Laris pausa a IA e pede o contato). Vale para o chat, o widget e o Telegram.
 - **Domínios do widget** (tela de configurações): com a restrição ligada, o `widget.js` não mostra a bolha em sites fora da lista e o navegador bloqueia o chat embutido pela regra `frame-ancestors` do `/embed`; a API também recusa conversas vindas de outras páginas.

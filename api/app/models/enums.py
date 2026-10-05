@@ -48,6 +48,13 @@ class PropertyPurpose(StrEnum):
     ALUGUEL = "aluguel"
 
 
+class UserRole(StrEnum):
+    ADMIN = "admin"
+    GESTOR = "gestor"
+    CORRETOR = "corretor"  # só os leads e as visitas do corretor vinculado
+    VISUALIZADOR = "visualizador"  # só leitura
+
+
 class BrokerRole(StrEnum):
     CORRETOR = "corretor"
     ESPECIALISTA_INVESTIMENTO = "especialista_investimento"

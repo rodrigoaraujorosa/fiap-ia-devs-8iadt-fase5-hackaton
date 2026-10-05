@@ -3,7 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.core.auth import require_admin
+from app.core.auth import require_insights
 from app.db.session import get_db
 from app.services import insights
 
@@ -16,7 +16,7 @@ def observability_links():
     return insights.links()
 
 
-@router.get("", dependencies=[Depends(require_admin)])
+@router.get("", dependencies=[Depends(require_insights)])
 def observability(period: Literal["24h", "7d", "30d"] = "7d", db: Session = Depends(get_db)):
     """Visão sintética de custo, uso dos agentes, cache e latência (uso registrado pelo app) e números de negócio."""
     return insights.insights(db, period)

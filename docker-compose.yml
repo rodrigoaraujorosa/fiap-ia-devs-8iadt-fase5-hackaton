@@ -25,6 +25,7 @@ services:
       DATABASE_URL: postgresql+psycopg://sdr:sdr@db:5432/sdr
       EMBEDDING_CACHE_DIR: /models
       CORS_ORIGINS: '["http://localhost:${WEB_PORT:-3001}", "http://127.0.0.1:${WEB_PORT:-3001}"]'
+      PUBLIC_API_URL: http://localhost:${API_PORT:-8001}  # volta do login com Google
       # sem SMTP no .env, os e-mails vão para o Mailpit (http://localhost:8025)
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}

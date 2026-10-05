@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.agents import runtime
 from app.agents.llm import AIPausedError
-from app.api.routes import admin, auth, chat, health, leads, properties, telegram, widget
+from app.api.routes import admin, auth, chat, health, leads, properties, telegram, users, widget
 from app.api.routes import observability as observability_routes
 from app.core import observability
 from app.core.config import get_settings
@@ -48,6 +48,7 @@ async def ai_paused(_: Request, exc: AIPausedError):
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(properties.router)
 app.include_router(chat.router)
 app.include_router(leads.router)

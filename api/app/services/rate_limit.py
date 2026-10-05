@@ -50,6 +50,16 @@ def _take(key: str, limit: int) -> bool:
         return True
 
 
+def allow(key: str, limit: int) -> bool:
+    """Limite genérico por hora (tentativas de login, pedidos de redefinição de senha...)."""
+    return _take(key, limit)
+
+
+def forget(key: str) -> None:
+    with _lock:
+        _hits.pop(key, None)
+
+
 def reset() -> None:
     with _lock:
         _hits.clear()

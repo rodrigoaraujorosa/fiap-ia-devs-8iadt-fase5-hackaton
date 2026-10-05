@@ -19,6 +19,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/components/AdminGate";
 import { CHAT_STORAGE_KEY } from "@/components/chat/ChatApp";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
+import { UsersSettings } from "@/components/settings/UsersSettings";
 import { FeedbackLine, Field, Switch, buttonClass, inputClass, type Feedback } from "@/components/settings/controls";
 import { Card } from "@/components/ui";
 import {
@@ -872,6 +873,7 @@ export function Configuration() {
   return (
     <AdminGate title="Configurações" subtitle="Ajustes que valem na hora, sem reiniciar a API. O .env define só os valores iniciais.">
       <AISettings />
+      <UsersSettings />
       <SecuritySettings />
       <FollowupSettings />
       <EmailSettings />

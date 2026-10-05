@@ -28,6 +28,7 @@ services:
       ENVIRONMENT: production
       EMBEDDING_CACHE_DIR: /models
       PUBLIC_APP_URL: https://${DOMAIN:?defina DOMAIN no .env do servidor}
+      PUBLIC_API_URL: https://${DOMAIN}/api  # volta do login com Google
       CORS_ORIGINS: '["https://${DOMAIN}"]'
       TRUST_PROXY_HEADERS: "true"  # o IP do visitante vem do Caddy (X-Forwarded-For)
     volumes:

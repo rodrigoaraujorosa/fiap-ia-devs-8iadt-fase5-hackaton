@@ -11,7 +11,8 @@ os.environ.update(SMTP_HOST="127.0.0.1", SMTP_PORT="1025", SMTP_USER="", SMTP_PA
                   SMTP_STARTTLS="false")  # fmt: skip
 os.environ["ENVIRONMENT"] = "test"  # traces dos testes separados no Langfuse (o painel mostra só o ambiente do app)
 os.environ["USD_BRL_LIVE"] = "false"  # sem consulta ao Banco Central nos testes (test_insights simula a resposta)
-os.environ["ADMIN_PASSWORD"] = ""  # a senha de administrador do .env não vale nos testes (test_admin liga quando quer)
+# o login do .env (senha de administrador, Google) não vale nos testes: tudo aberto, e cada teste liga o que precisa
+os.environ.update(ADMIN_PASSWORD="", GOOGLE_CLIENT_ID="", GOOGLE_CLIENT_SECRET="", ADMIN_EMAILS="", SESSION_SECRET="")
 
 # Banco próprio dos testes (<banco>_test, no mesmo Postgres): nenhum teste mexe nos leads nem nas configurações
 # do app que está rodando. Criado, migrado e semeado na primeira execução (sem LLM: os embeddings são locais).

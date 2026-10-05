@@ -249,25 +249,34 @@ export type TelegramAvailability = { available: boolean; username: string | null
 
 export type DemoResetResult = { leads: number; appointments: number; slots: number };
 
-// ---------------------------------------------------------------- acesso de administrador
+// ---------------------------------------------------------------- sessão, papéis e usuários
 
-const ADMIN_TOKEN_KEY = "imobiq:admin-token";
-
-export function getAdminToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(ADMIN_TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function setAdminToken(token: string | null) {
-  try {
-    if (token) window.localStorage.setItem(ADMIN_TOKEN_KEY, token);
-    else window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-  } catch {}
-}
+export type Role = "admin" | "gestor" | "corretor" | "visualizador";
+export const ROLE_LABEL: Record<Role, string> = {
+  admin: "Administrador",
+  gestor: "Gestor",
+  corretor: "Corretor",
+  visualizador: "Visualizador",
+};
+export type SessionUser = { name: string; email: string | null; picture: string | null; role: Role; broker_id: number | null };
+/** required: há login configurado; user: quem está logado (sem login configurado, o administrador local) */
+export type SessionInfo = { required: boolean; google: boolean; password: boolean; user: SessionUser | null };
+export type UserRow = {
+  id: number;
+  email: string;
+  name: string | null;
+  picture: string | null;
+  role: Role;
+  broker_id: number | null;
+  active: boolean;
+  has_password: boolean;
+  created_at: string;
+  last_login_at: string | null;
+};
+/** Link de uso único para a pessoa criar ou redefinir a senha; emailed: também foi enviado por e-mail */
+export type AccessLink = { link: string; emailed: boolean };
+export type InvitedUser = UserRow & { access: AccessLink };
+export type BrokerOption = { id: number; name: string; role: string };
 
 export class ApiError extends Error {
   constructor(
@@ -279,11 +288,10 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getAdminToken();
-  const headers = new Headers(init?.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  const res = await fetch(`${API_URL}${path}`, { cache: "no-store", ...init, headers });
+  // credentials: a sessão vai num cookie HttpOnly da API (o JavaScript da página não lê o token)
+  const res = await fetch(`${API_URL}${path}`, { cache: "no-store", credentials: "include", ...init });
   if (!res.ok) throw await apiError(res, `${init?.method ?? "GET"} ${path} falhou: ${res.status}`);
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -305,6 +313,9 @@ export const apiPost = <T,>(path: string, body?: unknown) =>
   });
 export const apiPut = <T,>(path: string, body: unknown) =>
   request<T>(path, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+export const apiPatch = <T,>(path: string, body: unknown) =>
+  request<T>(path, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+export const apiDelete = (path: string) => request<void>(path, { method: "DELETE" });
 
 // ---------------------------------------------------------------- streaming do chat (SSE)
 

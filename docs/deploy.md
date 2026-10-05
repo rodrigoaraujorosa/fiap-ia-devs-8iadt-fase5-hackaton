@@ -126,6 +126,26 @@ Use o modelo [`deploy/production.env.example`](../deploy/production.env.example)
 
 Depois: abra https://imobiq.arrtsoftware.com.br/configuration, entre com o `ADMIN_PASSWORD` e rode **"Resetar dados de demo"**.
 
+### 10.1. Usuários e login
+Com `ADMIN_PASSWORD` definido, o dashboard, os leads, a observabilidade e as configurações pedem login.
+
+1. Abra `/configuration`, expanda **"Acesso de emergência do administrador"** e entre com o `ADMIN_PASSWORD`.
+2. Em **Usuários e papéis**, convide cada pessoa pelo e-mail, com o papel. Ela recebe por e-mail um link (72 horas, uso único) para criar a própria senha; o mesmo link aparece na tela, para você copiar se o e-mail não chegar.
+3. A partir daí cada um entra com **e-mail e senha**. Convide a si mesmo como administrador e guarde o `ADMIN_PASSWORD` só para emergências.
+
+Para o papel *corretor*, vincule o usuário a um corretor da base: ele só vê os leads e as visitas desse corretor.
+
+### 10.2. Login com Google (alternativa opcional, gratuita)
+1. **[Google Cloud Console](https://console.cloud.google.com/apis/credentials) → criar um projeto** (não precisa de faturamento).
+2. **OAuth consent screen:** tipo **External**, nome do app "ImobiQ", seu e-mail de suporte. Em modo *Testing*, cadastre em **Test users** os e-mails que vão entrar (até 100).
+3. **Credentials → Create credentials → OAuth client ID → Web application**, com as **Authorized redirect URIs**:
+   - `https://imobiq.arrtsoftware.com.br/api/auth/google/callback`
+   - `http://localhost:8001/auth/google/callback` (para rodar localmente)
+4. No `/opt/imobiq/.env`, preencha `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `ADMIN_EMAILS` (seu e-mail, que entra como administrador) e aplique com `/opt/imobiq/dc up -d api`.
+5. O botão **Entrar com Google** aparece na tela de login. Ele vale para os mesmos usuários convidados: a conta Google precisa ter o e-mail cadastrado.
+
+Sem essas variáveis o botão do Google não aparece; o login por e-mail e senha funciona do mesmo jeito.
+
 ### 11. Telegram
 Com `TELEGRAM_MODE=webhook` no `.env` de produção, a API registra o webhook sozinha ao subir. **No `.env` local, apague o `TELEGRAM_BOT_TOKEN`** (ou use outro bot): a API local em polling apagaria o webhook de produção.
 
