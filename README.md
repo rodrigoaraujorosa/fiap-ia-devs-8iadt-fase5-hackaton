@@ -85,17 +85,17 @@ O lead conversa pelo chat do ImobiQ, pelo widget embutido no site da imobiliári
 
 ### 🔁 Componentes externos e alternativas
 
-Cada serviço externo fica atrás de um módulo próprio da API, então pode ser trocado sem mexer nos agentes. A tabela mostra o que a POC usa e duas alternativas que se encaixam no mesmo ponto (não implementadas).
+Cada serviço externo fica atrás de um módulo próprio da API, então pode ser trocado sem mexer nos agentes. A tabela mostra o que a POC usa e alternativas que se encaixam no mesmo ponto (não implementadas).
 
 | Papel na solução | Usado na POC | Alternativas | O que muda na troca |
 |---|---|---|---|
 | 💬 Canal de mensageria | **Telegram** (Bot API, gratuito, sem aprovação) | WhatsApp Business (Cloud API da Meta) · Instagram Direct / Messenger | Um novo adaptador de canal como o `services/telegram.py` (receber o webhook, enviar a resposta); o lead já tem o campo de canal. O WhatsApp exige conta comercial verificada e modelos de mensagem aprovados para o follow-up. |
-| 🧠 Modelos de linguagem | **Claude** (API da Anthropic) | Claude no Amazon Bedrock · Claude no Google Vertex AI | Só o cliente em `agents/llm.py`; útil para faturar pela nuvem que a empresa já usa. |
+| 🧠 Modelos de linguagem | **Claude** (API da Anthropic) | Modelos GPT (OpenAI) · Gemini (Google) · o próprio Claude pelo Amazon Bedrock ou pelo Google Vertex AI | Claude por outra nuvem: só o cliente em `agents/llm.py`. Outro fornecedor: também o formato das ferramentas, da saída estruturada e do cache de prompt nas chamadas dos agentes, e os prompts precisam ser reavaliados com os cenários de teste. |
 | 📈 Observabilidade de IA | **Langfuse** (traces) + painel próprio no Postgres | LangSmith · Arize Phoenix (código aberto, pode rodar na própria infraestrutura) | O módulo `core/observability.py`; o painel de custo do ImobiQ não depende da ferramenta escolhida. |
-| 🔐 Login | **E-mail e senha** + **Google** | Microsoft Entra ID (contas corporativas Microsoft 365) · Keycloak ou Auth0 (provedor de identidade central) | Um novo fluxo OpenID Connect como o `services/google_oauth.py`; usuários, papéis e sessão continuam os mesmos. |
+| 🔐 Login | **E-mail e senha** + **Google** | Microsoft Entra ID (contas corporativas Microsoft 365) · Meta (Facebook Login) · Keycloak ou Auth0 (provedor de identidade central) | Um novo fluxo OAuth 2.0 / OpenID Connect como o `services/google_oauth.py`; usuários, papéis e sessão continuam os mesmos. |
 | ✉️ E-mail | **SMTP da Hostinger** | Amazon SES · SendGrid | Só as variáveis `SMTP_*` do `.env`: o envio é SMTP padrão. |
 | 🔎 Busca vetorial (RAG) | **pgvector** no próprio Postgres | Qdrant · Amazon OpenSearch | A função de busca em `services/property_search.py`; vale a pena só com uma base muito maior que a de uma imobiliária. |
-| ☁️ Hospedagem | **EC2** com Docker Compose | AWS ECS Fargate + RDS · AWS App Runner + RDS | Os mesmos contêineres; a API não guarda estado, então escala horizontalmente. |
+| ☁️ Nuvem e hospedagem | **AWS**: EC2 com Docker Compose | Microsoft Azure (Container Apps + Azure Database for PostgreSQL) · Google Cloud (Cloud Run + Cloud SQL) · na própria AWS, ECS Fargate + RDS | Os mesmos contêineres e um PostgreSQL gerenciado com a extensão pgvector; muda o pipeline de deploy (registro de imagens e publicação). A API não guarda estado, então escala horizontalmente. |
 
 ## 🤖 Como o agente funciona
 
