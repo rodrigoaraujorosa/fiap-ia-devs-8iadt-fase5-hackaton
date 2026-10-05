@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import { useSession } from "@/components/Session";
 import { FeedbackLine, Field, buttonClass, inputClass, type Feedback } from "@/components/settings/controls";
 import { LEGAL } from "@/components/Legal";
@@ -81,14 +82,12 @@ function EmailLogin({ onLogin }: { onLogin: () => void }) {
       </Field>
       {!forgot && (
         <Field label="Senha" htmlFor="login-password">
-          <input
+          <PasswordInput
             id="login-password"
-            type="password"
             autoComplete="current-password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
           />
         </Field>
       )}
@@ -138,14 +137,12 @@ function AdminPasswordForm({ onLogin }: { onLogin: () => void }) {
   return (
     <form onSubmit={submit} className="space-y-3">
       <Field label="Senha de administrador" htmlFor="admin-password">
-        <input
+        <PasswordInput
           id="admin-password"
-          type="password"
           autoComplete="off"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={inputClass}
         />
       </Field>
       <button type="submit" disabled={busy || !password} className={`${buttonClass} border border-line text-ink hover:bg-surface-2`}>

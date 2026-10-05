@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
+import { PasswordInput } from "@/components/PasswordInput";
 import { useSession } from "@/components/Session";
-import { FeedbackLine, Field, buttonClass, inputClass } from "@/components/settings/controls";
+import { FeedbackLine, Field, buttonClass } from "@/components/settings/controls";
 import { Card } from "@/components/ui";
 import { ApiError, apiGet, apiPost } from "@/lib/api";
 
@@ -92,26 +93,22 @@ export function SetPassword() {
         {/* campo oculto com o e-mail: os gerenciadores de senha salvam a senha no usuário certo */}
         <input type="email" autoComplete="username" value={info.email} readOnly hidden />
         <Field label="Nova senha" htmlFor="new-password" hint={`Pelo menos ${MIN_LENGTH} caracteres.`}>
-          <input
+          <PasswordInput
             id="new-password"
-            type="password"
             autoComplete="new-password"
             required
             minLength={MIN_LENGTH}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
           />
         </Field>
         <Field label="Repita a senha" htmlFor="confirm-password">
-          <input
+          <PasswordInput
             id="confirm-password"
-            type="password"
             autoComplete="new-password"
             required
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className={inputClass}
           />
         </Field>
         {info.needs_terms && (

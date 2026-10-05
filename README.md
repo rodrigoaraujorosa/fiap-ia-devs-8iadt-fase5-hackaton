@@ -12,7 +12,14 @@
 ![AWS](https://img.shields.io/badge/Deploy-AWS-FF9900?logo=amazonwebservices&logoColor=white)
 ![License](https://img.shields.io/badge/licen%C3%A7a-PolyForm%20Noncommercial%201.0.0-orange)
 
-POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · Grupo 65: um agente SDR para **imóveis comerciais** que atende empresas e investidores, conversa de forma humanizada, faz a qualificação B2B (atividade, espaço, orçamento, quem decide e prazo), sugere conjuntos, andares corporativos, lajes, prédios e galpões logísticos de uma base simulada (inspirada na carteira de uma imobiliária de real estate corporativo de São Paulo), agenda visitas com o corretor especialista, faz follow-up automático e envia resumos aos corretores. A base também tem alguns residenciais de alto padrão, e a Laris atende os dois segmentos.
+POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · Grupo 65 (Rodrigo Rosa, Elias Silva, Fabia Jesus e Danilo Pereira): um agente SDR para **imóveis comerciais** que atende empresas e investidores, conversa de forma humanizada, faz a qualificação B2B (atividade, espaço, orçamento, quem decide e prazo), sugere conjuntos, andares corporativos, lajes, prédios e galpões logísticos de uma base simulada (inspirada na carteira de uma imobiliária de real estate corporativo de São Paulo), agenda visitas com o corretor especialista, faz follow-up automático e envia resumos aos corretores. A base também tem alguns residenciais de alto padrão, e a Laris atende os dois segmentos.
+
+| 🌐 Demonstração | Endereço |
+|---|---|
+| 🖥️ ImobiQ (chat, dashboard, observabilidade) | https://imobiq.arrtsoftware.com.br |
+| 🏠 Site fictício de imobiliária, com a Laris embutida | https://imobiliaria-exemplo.arrtsoftware.com.br |
+
+> 🔑 O chat e o site fictício são públicos. O dashboard, a observabilidade e as configurações pedem login, e o acesso é por convite. A instância da AWS fica ligada só durante os testes e a demonstração.
 
 > 🚧 Documentação completa (arquitetura, explicação da IA, demo e pitch) será finalizada ao longo do desenvolvimento.
 
@@ -28,8 +35,9 @@ POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · 
 | 🗄️ Dados | PostgreSQL 16 + pgvector |
 | 🔎 RAG | Busca híbrida: embeddings locais (fastembed, MiniLM multilíngue) + full-text search em português, fundidos por RRF |
 | 🖥️ Frontend | Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · lucide-react |
-| 📈 Observabilidade | Langfuse |
-| ☁️ Infra | Docker Compose · AWS |
+| 📈 Observabilidade | Painel próprio (uso e custo de cada chamada ao Claude gravados no Postgres) · Langfuse para os traces |
+| 🔐 Acesso | E-mail e senha (hash scrypt) ou Google (OAuth 2.0 / OpenID Connect) · papéis · sessão em cookie `HttpOnly` |
+| ☁️ Infra | Docker Compose · AWS (EC2, ECR, SSM) · Caddy (HTTPS) · GitHub Actions |
 
 ## 🤖 Como o agente funciona
 
@@ -61,30 +69,45 @@ flowchart LR
 | `POST` | `/chat/sessions` | Inicia uma conversa (cria o lead) |
 | `POST` | `/chat/{lead_id}/messages` | Envia mensagem; resposta via **SSE** (`analysis`, `agent`, `token`, `tool`, `properties`, `appointment`, `handoff`, `done`) |
 | `GET` | `/chat/{lead_id}/messages` | Histórico da conversa (inclui follow-ups) |
-| `GET` | `/leads` | Leads com score, temperatura e etapa do funil (filtros: `status`, `temperature`, `intent`) |
-| `GET` | `/leads/{lead_id}` | Detalhe do lead: perfil, resumo, agendamentos e conversa |
-| `POST` | `/leads/{lead_id}/summary` | Gera ou atualiza o resumo para o corretor |
-| `POST` | `/leads/{lead_id}/summary/email` | Envia o resumo ao corretor por e-mail agora |
-| `GET` | `/appointments` | Próximos agendamentos |
-| `GET` | `/dashboard/metrics` | KPIs: funil, temperatura, intenção, agendamentos e follow-ups |
-| `POST` | `/auth/login` | Troca a senha de administrador por um token de 12 horas (rotas `/config/*`, `/followups/run` e `/admin/*` exigem esse token quando há `ADMIN_PASSWORD`) |
-| `GET` / `PUT` | `/config/ai` | Liga/desliga o uso das LLMs |
-| `GET` / `PUT` | `/config/followup` | Lê/altera o follow-up em tempo real (liga/desliga, minutos, tentativas, horário de silêncio) |
-| `GET` / `PUT` | `/config/email` | Lê/altera o envio de e-mails (liga/desliga, modo demonstração, caixa de demonstração) |
-| `POST` | `/config/email/test` | Envia um e-mail de teste para validar o SMTP |
-| `POST` | `/followups/run` | Dispara o ciclo de follow-up na hora, mesmo pausado (útil na demo) |
-| `POST` | `/admin/demo/reset` | Apaga leads/conversas/agenda e recria os dados de demonstração |
+| `GET` | `/leads` 🔒 | Leads com score, temperatura e etapa do funil (filtros: `status`, `temperature`, `intent`) |
+| `GET` | `/leads/{lead_id}` 🔒 | Detalhe do lead: perfil, resumo, agendamentos e conversa |
+| `POST` | `/leads/{lead_id}/summary` 🔒 | Gera ou atualiza o resumo para o corretor |
+| `POST` | `/leads/{lead_id}/summary/email` 🔒 | Envia o resumo ao corretor por e-mail agora |
+| `GET` | `/appointments` 🔒 | Próximos agendamentos |
+| `GET` | `/dashboard/metrics` 🔒 | KPIs: funil, temperatura, intenção, agendamentos e follow-ups |
+| `GET` | `/observability` 🔒 | Painel de custo, uso dos agentes, cache e latência (`period`: `24h`, `7d` ou `30d`) |
+| `GET` | `/auth/me` | Sessão atual: formas de login disponíveis e o usuário logado, com o papel |
+| `POST` | `/auth/login` | Abre a sessão (cookie `HttpOnly`, 12 horas) com e-mail e senha, ou só com a senha de administrador (emergência) |
+| `GET` | `/auth/google/login` | Leva ao login do Google; a volta é em `/auth/google/callback` |
+| `POST` | `/auth/forgot` | "Esqueci minha senha": envia por e-mail um link de uso único |
+| `GET` / `POST` | `/auth/password` | Confere o link recebido e define a senha (exige o aceite dos termos na criação da conta) |
+| `POST` | `/auth/logout` | Encerra a sessão |
+| `GET` / `POST` | `/users` 👑 | Lista os usuários e convida um e-mail com um papel |
+| `PATCH` / `DELETE` | `/users/{id}` 👑 | Troca o papel, vincula a um corretor, desativa ou exclui |
+| `POST` | `/users/{id}/access-link` 👑 | Gera (e envia) um novo link para criar ou redefinir a senha |
+| `GET` / `PUT` | `/config/ai` 👑 | Liga/desliga o uso das LLMs |
+| `GET` / `PUT` | `/config/followup` 👑 | Lê/altera o follow-up em tempo real (liga/desliga, minutos, tentativas, horário de silêncio) |
+| `GET` / `PUT` | `/config/email` 👑 | Lê/altera o envio de e-mails (liga/desliga, modo demonstração, caixa de demonstração) |
+| `POST` | `/config/email/test` 👑 | Envia um e-mail de teste para validar o SMTP |
+| `GET` / `PUT` | `/config/rate-limit` · `/config/widget` · `/config/telegram` · `/config/exchange` 👑 | Limites de mensagens, domínios do widget, bot do Telegram e cotação do dólar do painel |
+| `POST` | `/followups/run` 👑 | Dispara o ciclo de follow-up na hora, mesmo pausado (útil na demo) |
+| `POST` | `/admin/demo/reset` 👑 | Apaga leads/conversas/agenda e recria os dados de demonstração |
+
+🔒 exige login (o corretor recebe só os próprios leads e visitas; o visualizador não altera nada) · 👑 só administradores. Sem `ADMIN_PASSWORD` e sem credenciais do Google (ambiente local), tudo fica aberto.
 
 ## 🖥️ Telas
 
 | Tela | O que mostra |
 |---|---|
+| 🏠 **Página inicial** (`/`) | Apresentação da Laris, atalhos para o chat e o dashboard, link para o site fictício da imobiliária e o botão **Login**. |
 | 💬 **Chat do lead** (`/chat`) | Conversa no estilo WhatsApp com a Laris: resposta em streaming, indicador do que a IA está fazendo ("consultando imóveis…"), cards dos imóveis sugeridos, confirmação de agendamento e follow-ups que chegam sozinhos. Ao lado, o painel **"O que a IA está entendendo"** mostra em tempo real o agente ativo, score, temperatura, perfil extraído e as próximas perguntas da qualificação. |
-| 📊 **Dashboard do corretor** (`/dashboard`) | Indicadores (leads, taxa de qualificação, quentes, agendamentos, follow-ups), funil por etapa, intenção dos leads, **canal de entrada** (chat ImobiQ, só site, só Telegram ou site → Telegram), próximos agendamentos e tabela de leads com filtros e o canal de cada lead. Atualiza sozinho a cada 10s. |
-| 🗂️ **Detalhe do lead** (`/dashboard/leads/{id}`) | Resumo inteligente para o corretor (gerar/atualizar), status e histórico do e-mail ao corretor (com reenvio), perfil, agendamentos e a conversa completa (com a divisória "continuou no Telegram" no ponto em que o lead trocou de canal), com o agente que respondeu cada mensagem e os follow-ups marcados. |
+| 📊 **Dashboard do corretor** (`/dashboard`) | Indicadores (leads, taxa de qualificação, quentes, agendamentos, follow-ups), funil por etapa, intenção dos leads, **canal de entrada** (chat ImobiQ, só site, só Telegram ou site → Telegram), próximos agendamentos e tabela de leads com filtros e o canal de cada lead. Atualiza sozinho a cada 10s. Exige login; o corretor vê só os leads e as visitas dele, com os indicadores no mesmo recorte. |
+| 🗂️ **Detalhe do lead** (`/dashboard/leads/{id}`) | Resumo inteligente para o corretor (gerar/atualizar), status e histórico do e-mail ao corretor (com reenvio), perfil, agendamentos e a conversa completa (com a divisória "continuou no Telegram" no ponto em que o lead trocou de canal), com o agente que respondeu cada mensagem e os follow-ups marcados. O visualizador não tem os botões de gerar resumo e de enviar e-mail. |
 | 🧩 **Chat no widget** (`/embed`) | Versão enxuta do chat usada dentro do iframe do widget, com a marca da imobiliária, saudação sobre o imóvel da página e botão de fechar. |
-| 📈 **Observabilidade** (`/observability`) | Protegida pela senha de administrador. Visão sintética de 24h, 7 ou 30 dias: custo com IA (US$ e R$), custo por conversa e por visita agendada, economia com cache, tempo de resposta (mediana e p95), custo por dia, por modelo e por agente, ferramentas usadas e tentativas de prompt injection, com link para o Langfuse. |
-| ⚙️ **Configurações** (`/configuration`) | Protegida pela senha de administrador (`ADMIN_PASSWORD`). **Liga/desliga do atendimento com IA**: pausado, nada chama o Claude (o chat, o widget e o Telegram respondem um recado fixo pedindo nome e telefone e guardam a mensagem; follow-ups e resumos param), para o site público não gastar tokens fora das demonstrações. Liga/desliga do follow-up com efeito imediato, minutos até a 1ª tentativa, máximo de tentativas, horário de silêncio e botão "rodar agora". Controla o e-mail aos corretores (liga/desliga, modo demonstração, e-mail de teste) e a cotação do dólar do painel de observabilidade (busca diária no Banco Central ligada/desligada e cotação fixa de reserva). Também reseta os dados de demonstração (8 leads em todas as etapas do funil, com conversas, resumos e agendamentos). |
+| 📈 **Observabilidade** (`/observability`) | Para administradores, gestores e visualizadores. Visão sintética de 24h, 7 ou 30 dias: custo com IA (US$ e R$), custo por conversa e por visita agendada, economia com cache, tempo de resposta (mediana e p95), custo por dia, por modelo e por agente, ferramentas usadas e tentativas de prompt injection, com link para o Langfuse. |
+| ⚙️ **Configurações** (`/configuration`) | Só para administradores. **Usuários e papéis**: convida por e-mail, troca o papel, vincula o corretor, gera o link de senha, desativa e exclui. **Liga/desliga do atendimento com IA**: pausado, nada chama o Claude (o chat, o widget e o Telegram respondem um recado fixo pedindo nome e telefone e guardam a mensagem; follow-ups e resumos param), para o site público não gastar tokens fora das demonstrações. Liga/desliga do follow-up com efeito imediato, minutos até a 1ª tentativa, máximo de tentativas, horário de silêncio e botão "rodar agora". Controla o e-mail aos corretores (liga/desliga, modo demonstração, e-mail de teste) e a cotação do dólar do painel de observabilidade (busca diária no Banco Central ligada/desligada e cotação fixa de reserva). Também reseta os dados de demonstração (8 leads em todas as etapas do funil, com conversas, resumos e agendamentos). |
+| 🔐 **Login e criação de senha** (no próprio `/dashboard` e em `/password`) | E-mail e senha com "esqueci minha senha", botão **Entrar com Google** e o acesso de emergência do administrador. O convidado cria a senha pelo link recebido, marcando o aceite dos termos. |
+| 📜 **Política de Privacidade e Termos de Uso** (`/privacidade` e `/termos`) | Páginas públicas, ligadas no rodapé de todas as telas: quais dados são tratados, com quem são compartilhados e as regras de uso da POC. |
 
 A conversa fica salva no navegador (o lead é retomado ao recarregar); use **Nova conversa** para simular outro lead. Os atalhos iniciais do chat reproduzem os três cenários do enunciado.
 
@@ -143,7 +166,7 @@ site-exemplo/  gerador do site fictício da "Imobiliária Exemplo", com o widget
 data/   base simulada: 76 imóveis (68 comerciais e 8 residenciais de alto padrão) em SP e região, com edifícios fictícios (gerador determinístico), corretores por especialidade e leads de demonstração
 docs/   arquitetura, explicação da IA, deploy e pitch
 deploy/ produção: docker-compose.prod.yml, Caddyfile, user data da EC2, políticas de IAM e script de deploy
-.github/workflows/  CI (lint e testes) e deploy contínuo na AWS
+.github/workflows/  CI (lint e testes), deploy contínuo na AWS e publicação do site fictício na Hostinger
 ```
 
 ## ☁️ Deploy na AWS
@@ -153,6 +176,8 @@ Push na `main` → **GitHub Actions** roda o CI (ruff, pytest com Postgres, esli
 - **Sem chaves da AWS no GitHub** (OIDC com credenciais temporárias) e **sem porta 22 aberta** (deploy pelo SSM, acesso pelo Session Manager).
 - Na EC2, Docker Compose com **Caddy** (HTTPS automático): o app na raiz e a API em `/api`, no mesmo domínio.
 - Segredos só no `.env` do servidor; migrations e seed automáticos a cada deploy.
+- **Instância parada não quebra o pipeline:** as imagens vão para o ECR e a atualização da EC2 é pulada com um aviso; depois de ligar a instância, basta rodar o workflow de novo.
+- O **site fictício** é publicado na Hostinger por FTPS, por um workflow próprio, a cada mudança no gerador ou na base de imóveis.
 
 Passo a passo completo (console da AWS, DNS na Hostinger, variáveis do GitHub, operação e custos): **[docs/deploy.md](docs/deploy.md)**.
 
@@ -176,6 +201,8 @@ docker compose exec api python -m scripts.seed --demo   # --demo: cria também o
 
 > ℹ️ As portas 3000/8000 costumam estar ocupadas no Windows, por isso o padrão é 3001/8001 (configurável no `.env`).
 
+> 🔐 Sem `ADMIN_PASSWORD` e sem credenciais do Google no `.env`, o app local abre sem login. Para testar o login, defina `ADMIN_PASSWORD`, entre pelo acesso de emergência e convide um usuário em **Configurações → Usuários e papéis** (o convite sai pelo SMTP configurado; com o padrão, cai no Mailpit).
+
 ### 🛠️ Desenvolvimento local (sem containerizar api/web)
 
 ```bash
@@ -190,7 +217,7 @@ cd ../web && npm install && npm run dev
 ```bash
 cd api && uv run pytest     # requer o db rodando; usa um banco próprio (sdr_test), criado e semeado sozinho
 RUN_LLM_TESTS=1 uv run pytest tests/test_agent_scenarios.py   # cenários do enunciado com o Claude (custa tokens)
-uv run ruff check .
+uv run ruff check . && uv run ruff format --check .   # o CI exige os dois
 ```
 
 ## 📄 Licença
