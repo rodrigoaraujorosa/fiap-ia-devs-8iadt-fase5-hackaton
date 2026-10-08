@@ -1,6 +1,6 @@
 # 🏠 ImobiQ — Agente SDR Imobiliário com IA Generativa
 
-![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
+![Status](https://img.shields.io/badge/status-conclu%C3%ADdo-brightgreen)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-multiagente-1C3C3C)
@@ -19,9 +19,9 @@ POC do **Hackathon FIAP — Pós Tech IA para Devs (Fase 5)** · Turma 8IADT · 
 | 🖥️ ImobiQ (chat, dashboard, observabilidade) | https://imobiq.arrtsoftware.com.br |
 | 🏠 Site fictício de imobiliária, com a Laris embutida | https://imobiliaria-exemplo.arrtsoftware.com.br |
 
-> 🔑 O chat e o site fictício são públicos. O dashboard, a observabilidade e as configurações pedem login, e o acesso é por convite. A instância da AWS fica ligada só durante os testes e a demonstração.
+> 🔑 O chat e o site fictício são públicos. O dashboard, a observabilidade e as configurações pedem login, e o acesso é por convite. A instância da AWS fica ligada só durante os testes e a demonstração; fora disso, os dois endereços ficam indisponíveis. Para pedir um período de testes, escreva para [rodrigo@arrtsoftware.com.br](mailto:rodrigo@arrtsoftware.com.br).
 
-> 📚 Documentação: **[arquitetura](docs/arquitetura.md)** · **[como a IA funciona](docs/ia.md)** · **[deploy](docs/deploy.md)**. 🚧 O relatório técnico, a demo e o pitch serão finalizados ao longo do desenvolvimento.
+> 📚 Documentação: **[Relatório Técnico](docs/TECHNICAL_REPORT_FASE5.md)**, o documento completo do projeto, com as telas, os custos medidos e os testes. Por assunto: **[arquitetura](docs/arquitetura.md)** · **[como a IA funciona](docs/ia.md)** · **[deploy](docs/deploy.md)**.
 
 ---
 
@@ -222,7 +222,7 @@ api/    FastAPI + agentes (app/), migrations (alembic/), seed (scripts/), testes
 web/    Next.js — chat do lead, dashboard do corretor, configurações e o widget (public/widget.js)
 site-exemplo/  gerador do site fictício da "Imobiliária Exemplo", com o widget embutido
 data/   base simulada: 76 imóveis (68 comerciais e 8 residenciais de alto padrão) em SP e região, com edifícios fictícios (gerador determinístico), corretores por especialidade e leads de demonstração
-docs/   arquitetura, explicação da IA, deploy e pitch
+docs/   relatório técnico (com as telas em figures/), arquitetura, explicação da IA e deploy
 deploy/ produção: docker-compose.prod.yml, Caddyfile, user data da EC2, políticas de IAM e script de deploy
 .github/workflows/  CI (lint e testes), deploy contínuo na AWS e publicação do site fictício na Hostinger
 ```

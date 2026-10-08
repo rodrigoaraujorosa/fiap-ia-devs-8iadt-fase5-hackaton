@@ -36,3 +36,6 @@ docs/build_word.py
 docs/*.word.md
 docs/figures/diagrams/
 *.docx
+
+# apresentação do pitch e roteiros: ficam só na máquina
+docs/pitch/
