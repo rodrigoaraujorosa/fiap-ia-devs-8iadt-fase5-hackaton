@@ -58,7 +58,6 @@ Desenvolver um agente que:
 | Repositório | [rodrigoaraujorosa/fiap-ia-devs-8iadt-fase5-hackaton](https://github.com/rodrigoaraujorosa/fiap-ia-devs-8iadt-fase5-hackaton) |
 | Aplicação em produção | https://imobiq.arrtsoftware.com.br |
 | Site fictício com a Laris embutida | https://imobiliaria-exemplo.arrtsoftware.com.br |
-| Vídeo (pitch e demonstração, até 15 minutos) | 🔲 **PENDENTE:** link do vídeo |
 
 O chat e o site fictício são públicos. O dashboard, a observabilidade e as configurações
 exigem login, com acesso por convite. A instância da AWS fica ligada durante os testes e a
